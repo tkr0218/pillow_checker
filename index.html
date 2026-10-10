@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1214">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>朝夜のくすり</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one column "night greenhouse". Hero = glass terrarium lit by a grow light, plant left / streak right.
+   Then two dose toggles (sunrise amber / moonlight violet), garden bed, zukan grid, medals, 7-day dots, settings. */
+:root{
+  color-scheme:dark;
+  --bg:#0b1214; --bg-2:#0f191c; --surface:#132024; --surface-2:#1a2b30; --line:#23373d; --line-2:#2f4950;
+  --fg:#e9f2ef; --muted:#87a29b; --dim:#5b746e;
+  --am:#ffb547; --pm:#9d97ff; --grow:#e35fd2; --water:#5cc8ff;
+  --ok:#74e3a8; --warn:#ff7d5c; --gold:#f5c451; --rare:#e35fd2;
+  --leaf:#5fc47a; --leaf-dry:#b7a95c; --stem:#4aa463; --soil:#3b2a1f; --pot:#c46d48; --pot-rim:#a5583a; --bud:#6fa87a;
+  --shadow:rgba(0,0,0,.5); --scrim:rgba(3,8,9,.78);
+  --f-display:"Dela Gothic One","Hiragino Sans",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,monospace;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  background-image:radial-gradient(120% 60% at 50% -10%, color-mix(in srgb,var(--grow) 10%,transparent), transparent 60%);
+  background-attachment:fixed}
+.wrap{max-width:520px;margin:0 auto;padding-inline:16px;padding-block:18px 56px;display:grid;gap:32px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:400;font-size:1.05rem;margin:0;letter-spacing:.06em}
+.date{font-family:var(--f-mono);color:var(--muted);font-size:.78rem;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+h2{font-family:var(--f-body);font-size:.92rem;font-weight:700;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
+h2::before{content:attr(data-en);font-family:var(--f-mono);font-size:.68rem;font-weight:700;letter-spacing:.16em;color:var(--dim)}
+h2 .count{margin-left:auto;font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+.hint{font-size:.78rem;color:var(--muted);margin:10px 2px 0;line-height:1.7}
+.stars{color:var(--gold);letter-spacing:1px;font-size:.72rem}
+.stars.r4{color:var(--rare)}
+
+/* Hero: terrarium */
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end;
+  padding:18px 16px 16px;border-radius:28px;border:1px solid var(--line);overflow:hidden;
+  background:
+    radial-gradient(70% 75% at 28% 0%, color-mix(in srgb,var(--grow) 30%,transparent), transparent 70%),
+    linear-gradient(180deg,var(--surface) 0%,var(--bg-2) 100%)}
+.hero::before{content:"";position:absolute;top:0;left:10%;width:36%;height:3px;border-radius:0 0 4px 4px;
+  background:var(--grow);box-shadow:0 0 18px 4px color-mix(in srgb,var(--grow) 60%,transparent)}
+.plant{position:relative;min-width:0}
+.plant svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 10px 18px var(--shadow))}
+.plant .drop{fill:var(--water);animation:fall .9s ease-in forwards}
+@keyframes fall{from{transform:translateY(0);opacity:1}to{transform:translateY(80px);opacity:0}}
+.plant .sway{transform-origin:100px 168px;transition:transform .8s ease}
+.meta{display:grid;gap:4px;padding-bottom:6px;min-width:0}
+.meta .sub{font-family:var(--f-mono);font-size:.68rem;font-weight:700;letter-spacing:.16em;color:var(--muted)}
+.meta .big{font-family:var(--f-display);font-weight:400;font-size:clamp(3.6rem,19vw,5.2rem);line-height:.95;font-variant-numeric:tabular-nums;
+  display:flex;align-items:baseline;gap:6px}
+.meta .big small{font-family:var(--f-body);font-weight:700;font-size:1rem;color:var(--muted)}
+.meta .mood{font-weight:700;font-size:.9rem;margin-top:6px}
+.meta .grow{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.meta .luck{justify-self:start;font-size:.72rem;font-weight:700;color:var(--grow);border:1px solid color-mix(in srgb,var(--grow) 55%,transparent);
+  padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--grow) 12%,transparent)}
+.gauge{display:flex;gap:3px;margin-top:4px}
+.gauge i{flex:1;height:7px;border-radius:2px;background:var(--line)}
+.gauge i.on{background:var(--water);box-shadow:0 0 8px color-mix(in srgb,var(--water) 70%,transparent)}
+
+/* Dose toggles */
+.box{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.slot{--c:var(--am);
+  position:relative;appearance:none;border:1px solid var(--line);color:var(--fg);font:inherit;text-align:left;cursor:pointer;
+  border-radius:24px;padding:16px 16px 14px;min-height:156px;display:grid;gap:2px;align-content:start;overflow:hidden;
+  background:linear-gradient(160deg,var(--surface-2),var(--surface));
+  transition:border-color .2s,box-shadow .2s,transform .12s,background .2s}
+.slot[data-slot="pm"]{--c:var(--pm)}
+.slot:hover{border-color:color-mix(in srgb,var(--c) 60%,var(--line))}
+.slot:active{transform:scale(.97)}
+.slot:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+.slot .label{font-family:var(--f-display);font-size:1.7rem;line-height:1.2;display:flex;align-items:center;gap:10px}
+.slot .label svg{width:26px;height:26px;color:var(--c);flex:none}
+.slot .due{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+.slot .state{font-weight:700;font-size:.9rem;margin-top:8px}
+.pill{position:absolute;right:14px;bottom:14px;width:46px;height:20px;border-radius:999px;border:1.5px dashed color-mix(in srgb,var(--c) 70%,transparent)}
+.slot[data-status="taken"]{border-color:var(--c);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--c) 26%,var(--surface-2)),var(--surface));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 30%,transparent),0 10px 30px -8px color-mix(in srgb,var(--c) 55%,transparent)}
+.slot[data-status="taken"] .pill{border-style:solid;border-color:var(--c);background:var(--c);box-shadow:0 0 14px var(--c)}
+.slot[data-status="taken"] .state{color:var(--c)}
+.slot[data-status="due"]{border-color:var(--c);animation:breathe 2.4s ease-in-out infinite}
+.slot[data-status="due"] .state{color:var(--c)}
+@keyframes breathe{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 18%,transparent)}}
+
+/* Garden bed */
+.garden{display:flex;flex-wrap:wrap;gap:2px 4px;align-items:flex-end;min-height:72px;padding:12px 14px 0;border-radius:20px;
+  border:1px solid var(--line);background:
+    linear-gradient(180deg,transparent calc(100% - 14px),var(--soil) calc(100% - 14px)),
+    linear-gradient(180deg,var(--surface),var(--bg-2))}
+.garden svg{width:36px;height:48px;flex:none;display:block;margin-bottom:6px}
+.garden .empty{font-size:.8rem;color:var(--muted);align-self:center;margin-bottom:18px}
+.garden .more{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);align-self:center;margin-bottom:18px}
+
+/* Zukan */
+.zukan{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.card{border:1px solid var(--line);border-radius:16px;padding:10px 4px 8px;text-align:center;display:grid;gap:1px;justify-items:center;min-width:0;
+  background:linear-gradient(180deg,var(--surface-2),var(--surface))}
+.card svg{width:54px;height:54px;display:block}
+.card .nm{font-size:.7rem;font-weight:700;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere}
+.card .n{font-family:var(--f-mono);font-size:.64rem;color:var(--muted)}
+.card.locked{background:var(--bg-2);border-style:dashed}
+.card.locked .nm{color:var(--dim)}
+.card.r3:not(.locked){border-color:color-mix(in srgb,var(--gold) 70%,transparent);box-shadow:inset 0 0 18px -6px color-mix(in srgb,var(--gold) 50%,transparent)}
+.card.r4:not(.locked){border:1px solid transparent;
+  background:linear-gradient(180deg,var(--surface-2),var(--surface)) padding-box,
+    conic-gradient(from 0deg,#ff6b9d,#ffd36b,#6bffb5,#6bc8ff,#b36bff,#ff6b9d) border-box;
+  box-shadow:0 0 20px -6px var(--grow)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button{font:700 .74rem var(--f-mono);letter-spacing:.04em;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.filters button:focus-visible{outline:2px solid var(--pm);outline-offset:2px}
+
+/* Medals */
+.badges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.badge{aspect-ratio:1;max-width:100%;border-radius:50%;border:1px dashed var(--line-2);display:grid;place-content:center;text-align:center;gap:0;color:var(--dim)}
+.badge .d{font-family:var(--f-display);font-size:1.25rem;line-height:1.1}
+.badge .t{font-size:.6rem;line-height:1.3;padding-inline:4px}
+.badge.got{border:1px solid color-mix(in srgb,var(--gold) 80%,transparent);color:var(--fg);
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--gold) 35%,var(--surface-2)),var(--surface) 70%);
+  box-shadow:0 0 18px -6px var(--gold)}
+.badge.got .d{color:var(--gold)}
+
+/* Week dots */
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;font-variant-numeric:tabular-nums;
+  padding:14px 12px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.day{display:grid;gap:6px;justify-items:center}
+.day .dn{font-family:var(--f-mono);font-size:.66rem;color:var(--muted)}
+.day.today .dn{color:var(--fg);font-weight:700}
+.cell{width:100%;max-width:30px;aspect-ratio:1;border-radius:50%;border:1px solid var(--line-2);background:transparent}
+.cell.am.on{background:var(--am);border-color:var(--am);box-shadow:0 0 10px color-mix(in srgb,var(--am) 60%,transparent)}
+.cell.pm.on{background:var(--pm);border-color:var(--pm);box-shadow:0 0 10px color-mix(in srgb,var(--pm) 60%,transparent)}
+.cell.miss{border-color:var(--warn);border-style:dashed}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.72rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:0;margin-right:5px}
+
+/* Settings */
+.settings{display:flex;gap:12px;flex-wrap:wrap}
+.settings label{display:grid;gap:4px;font-size:.78rem;color:var(--muted)}
+.settings input{font:500 1rem var(--f-mono);padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg)}
+.settings input:focus-visible{outline:2px solid var(--pm);outline-offset:2px}
+.sync{font-family:var(--f-mono);font-size:.7rem;color:var(--dim);letter-spacing:.02em}
+.sync.warn{color:var(--warn)}
+
+/* Reveal */
+.reveal{position:fixed;inset:0;background:var(--scrim);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px;z-index:10}
+.reveal .sheet{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--bg-2));color:var(--fg);border:1px solid var(--line-2);
+  border-radius:28px;padding:28px 20px 22px;max-width:340px;width:100%;text-align:center;display:grid;gap:6px;justify-items:center;
+  box-shadow:0 30px 80px var(--shadow);animation:pop .5s cubic-bezier(.2,1.4,.4,1);overflow:hidden}
+.reveal .sheet::before{content:"";position:absolute;inset:-30% -30% auto;height:70%;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--grow) 40%,transparent),transparent);pointer-events:none}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.reveal svg{position:relative;width:160px;height:160px;animation:spin-in 1s cubic-bezier(.2,1,.3,1)}
+@keyframes spin-in{from{transform:rotate(-90deg) scale(.4);opacity:0}to{transform:none;opacity:1}}
+.reveal .new{position:relative;font-family:var(--f-mono);font-weight:700;font-size:.7rem;letter-spacing:.16em;color:var(--bg);background:var(--grow);padding:3px 12px;border-radius:999px}
+.reveal .nm{position:relative;font-family:var(--f-display);font-size:1.7rem;line-height:1.3}
+.reveal .stars{font-size:1rem}
+.reveal .desc{font-size:.84rem;color:var(--muted)}
+.reveal button{margin-top:12px;font:700 .92rem var(--f-body);padding:12px 30px;border-radius:999px;border:0;background:var(--fg);color:var(--bg);cursor:pointer}
+.reveal button:focus-visible{outline:2px solid var(--grow);outline-offset:3px}
+
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;
+  background:var(--surface-2);color:var(--fg);border:1px solid var(--line-2);padding:10px 18px;border-radius:999px;font-weight:700;font-size:.86rem;
+  max-width:calc(100% - 32px);text-align:center;box-shadow:0 12px 30px var(--shadow)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+/* ページの土台（artifact では外側の枠が持っていたもの） */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-tap-highlight-color:transparent}
+img{max-width:100%}
+[hidden]{display:none!important}
+.backup{display:flex;gap:8px;flex-wrap:wrap}
+.backup button,.backup label.btn{font:500 .85rem var(--f-body);padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.backup button:focus-visible,.backup label.btn:focus-within{outline:2px solid var(--pm);outline-offset:2px}
+.backup input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>朝夜のくすり</h1>
+    <span class="date" id="today"></span>
+  </header>
+
+  <section class="hero" aria-live="polite">
+    <div class="plant" id="plant" role="img" aria-label="育てている植物"></div>
+    <div class="meta">
+      <span class="sub">STREAK</span>
+      <span class="big"><span id="streak">0</span><small>日</small></span>
+      <span class="mood" id="mood"></span>
+      <div class="gauge" id="gauge" aria-hidden="true"></div>
+      <span class="grow" id="grow"></span>
+      <span class="luck" id="luck" hidden>レア率UP中</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-today">
+    <h2 id="h-today" data-en="TODAY">きょうの水やり</h2>
+    <div class="box">
+      <button class="slot" id="slot-am" data-slot="am" type="button">
+        <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g></svg>朝</span>
+        <span class="due" id="due-am"></span>
+        <span class="state" id="state-am">未服用</span>
+        <span class="pill" aria-hidden="true"></span>
+      </button>
+      <button class="slot" id="slot-pm" data-slot="pm" type="button">
+        <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/><circle cx="21" cy="9" r=".8" fill="currentColor"/></svg>夜</span>
+        <span class="due" id="due-pm"></span>
+        <span class="state" id="state-pm">未服用</span>
+        <span class="pill" aria-hidden="true"></span>
+      </button>
+    </div>
+    <p class="hint">薬を飲んだらタップで水やり。押し間違えたらもう一度タップで取り消し。</p>
+  </section>
+
+  <section aria-labelledby="h-garden">
+    <h2 id="h-garden" data-en="GARDEN">花だん <span class="count" id="garden-n"></span></h2>
+    <div class="garden" id="garden"></div>
+    <p class="hint">何が咲くかは咲くまで秘密。3日連続で飲むとレア率UP、8本続けて★3以上が出なければ次は確定。</p>
+  </section>
+
+  <section aria-labelledby="h-zukan">
+    <h2 id="h-zukan" data-en="FIELD GUIDE">花図鑑 <span class="count" id="zukan-n"></span></h2>
+    <div class="filters" id="filters" role="group" aria-label="レア度で絞り込み"></div>
+    <div class="zukan" id="zukan"></div>
+  </section>
+
+  <section aria-labelledby="h-badge">
+    <h2 id="h-badge" data-en="MEDALS">連続記録バッジ</h2>
+    <div class="badges" id="badges"></div>
+  </section>
+
+  <section aria-labelledby="h-week">
+    <h2 id="h-week" data-en="7 DAYS">この7日間</h2>
+    <div class="week" id="week"></div>
+    <div class="legend">
+      <span><i style="background:var(--am)"></i>朝</span>
+      <span><i style="background:var(--pm)"></i>夜</span>
+      <span><i style="border:1.5px dashed var(--warn)"></i>飲み忘れ</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-set">
+    <h2 id="h-set" data-en="SCHEDULE">飲む時刻の目安</h2>
+    <div class="settings">
+      <label for="t-am">朝<input type="time" id="t-am" value="08:00"></label>
+      <label for="t-pm">夜<input type="time" id="t-pm" value="21:00"></label>
+    </div>
+    <p class="hint">時刻を過ぎるとカードの色が変わります。遅れても減点はありません。</p>
+    <p class="sync" id="sync">読み込み中…</p>
+  </section>
+
+  <section aria-labelledby="h-backup">
+    <h2 id="h-backup" data-en="BACKUP">バックアップ</h2>
+    <div class="backup">
+      <button type="button" id="bk-export">ファイルに書き出す</button>
+      <label class="btn" for="bk-import">ファイルから読み込む<input type="file" id="bk-import" accept="application/json,.json"></label>
+    </div>
+    <p class="hint">記録はこのスマホの中だけに保存されます。機種変更やブラウザのデータ削除に備えて、ときどき書き出してください。読み込むと、いまの記録に足りない日だけを追加します（上書きはしません）。</p>
+  </section>
+</div>
+<div class="reveal" id="reveal" hidden role="dialog" aria-modal="true" aria-labelledby="rv-name">
+  <div class="sheet">
+    <span class="new" id="rv-new" hidden>NEW</span>
+    <div id="rv-art"></div>
+    <span class="nm" id="rv-name"></span>
+    <span class="stars" id="rv-stars"></span>
+    <span class="desc" id="rv-desc"></span>
+    <button type="button" id="rv-close">花だんに植える</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  "use strict";
+  // @logic-start（ここから @logic-end までは DOM に触らない純粋なロジック。テストから直接読み込む）
+  const LS_KEY = "kusuri.v1";
+  const MILESTONES = [
+    [3, "三日坊主こえ"], [7, "1週間"], [14, "2週間"], [30, "1か月"],
+    [60, "2か月"], [100, "100日"], [180, "半年"], [365, "1年"],
+  ];
+  // ================================================================
+  // バージョン管理のルール（ここを壊すと過去の花が入れ替わる）
+  //  1. RULESETS と SPECIES は「追記のみ」。既存の行の変更・削除・並べ替えは禁止。
+  //  2. ルールを変えたいときは、RULESETS に新しい版を from（適用開始日）つきで足す。
+  //     各開花は「咲いた日に有効だった版」で抽選されるので、過去の花は変わらない。
+  //  3. 花を足すときは v に新しい版番号をつける。古い版の抽選には出てこない。
+  //  4. 開花タイミング（BLOOM_AT）は版をまたいで固定。変えると何本目の花かがずれる。
+  //  変更したら test_blooms.mjs の固定スナップショットが通ることを確認する。
+  // ================================================================
+  const RULESETS = [
+    { v: 1, from: "2000-01-01",
+      weights: [55, 30, 12, 3],          // ★1..★4
+      luckyWeights: [35, 33, 22, 10],    // 連続記録中
+      luckyStreak: 3,                    // 前日までこの日数連続でレア率アップ
+      pity: 8,                           // この本数 ★3以上が出なければ次は★3以上確定
+      newChance: 0.7 },                  // 未発見の花を優先する確率
+  ];
+  const rulesetFor = dayK => RULESETS.filter(r => r.from <= dayK).pop();
+
+  // n 本目（0始まり）の花が咲く累計水やり回数。序盤は早く、4本目からは14回ごと。
+  const EARLY = [4, 12, 24], CYCLE = 14;
+  const BLOOM_AT = n => n < EARLY.length ? EARLY[n] : EARLY[EARLY.length - 1] + CYCLE * (n - EARLY.length + 1);
+
+  // 花図鑑。v は追加された版、shape は描き方、months は咲く月（季節限定）
+  const SPECIES = [
+    // ★1
+    { id: "tanpopo",  nm: "たんぽぽ",     r: 1, shape: "thin",    n: 18, c: "#f2c230", ctr: "#e0a40f" },
+    { id: "shirotsume", nm: "しろつめくさ", r: 1, shape: "thin",  n: 14, c: "#f3f0e6", ctr: "#d9d3bf" },
+    { id: "sumire",   nm: "すみれ",       r: 1, shape: "round",   n: 5,  c: "#8f68d0", ctr: "#f2d24a" },
+    { id: "margaret", nm: "マーガレット", r: 1, shape: "thin",    n: 12, c: "#f7f5ee", ctr: "#f2b51f" },
+    { id: "cosmos",   nm: "コスモス",     r: 1, shape: "pointed", n: 8,  c: "#e57fb0", ctr: "#f2c230" },
+    { id: "poppy",    nm: "ポピー",       r: 1, shape: "round",   n: 4,  c: "#ea6a4f", ctr: "#3a2a22" },
+    { id: "himawari", nm: "ひまわり",     r: 1, shape: "pointed", n: 14, c: "#f2b51f", ctr: "#6b4a33" },
+    { id: "pansy",    nm: "パンジー",     r: 1, shape: "round",   n: 5,  c: "#6f5cc4", ctr: "#f2c230" },
+    // ★2
+    { id: "nemophila", nm: "ネモフィラ",  r: 2, shape: "round",   n: 5,  c: "#7cc3e8", ctr: "#ffffff" },
+    { id: "asagao",   nm: "あさがお",     r: 2, shape: "cup",     n: 5,  c: "#5f7fe0", ctr: "#f4f1fb" },
+    { id: "tulip",    nm: "チューリップ", r: 2, shape: "tulip",   n: 3,  c: "#e8505b", ctr: "#e8505b" },
+    { id: "gerbera",  nm: "ガーベラ",     r: 2, shape: "thin",    n: 22, c: "#ff8a3d", ctr: "#7a3b1a" },
+    { id: "kikyou",   nm: "ききょう",     r: 2, shape: "pointed", n: 5,  c: "#7a6fd6", ctr: "#dcd7f7" },
+    { id: "anemone",  nm: "アネモネ",     r: 2, shape: "round",   n: 6,  c: "#c8384f", ctr: "#22232e" },
+    { id: "dahlia",   nm: "ダリア",       r: 2, shape: "layered", n: 10, c: "#d0457a", ctr: "#f2c230" },
+    // ★3（季節限定あり）
+    { id: "sakura",   nm: "さくら",       r: 3, shape: "notched", n: 5,  c: "#f6b8cb", ctr: "#d9507a", months: [3, 4], season: "春" },
+    { id: "ajisai",   nm: "あじさい",     r: 3, shape: "cluster", n: 9,  c: "#8aa6e8", ctr: "#b49ae0", months: [6, 7], season: "梅雨" },
+    { id: "higanbana", nm: "ひがんばな",  r: 3, shape: "spider",  n: 6,  c: "#d6332d", ctr: "#d6332d", months: [9, 10], season: "秋" },
+    { id: "ume",      nm: "うめ",         r: 3, shape: "round",   n: 5,  c: "#e86a8a", ctr: "#f2d24a", months: [1, 2], season: "冬" },
+    { id: "yuri",     nm: "ゆり",         r: 3, shape: "pointed", n: 6,  c: "#f4efe6", ctr: "#e09a2a" },
+    { id: "suiren",   nm: "すいれん",     r: 3, shape: "layered", n: 12, c: "#f2a7c8", ctr: "#f2c230" },
+    // ★4
+    { id: "bluerose", nm: "青いバラ",     r: 4, shape: "rose",    n: 5,  c: "#4f6fd8", ctr: "#2f46a8" },
+    { id: "niji",     nm: "にじいろの花", r: 4, shape: "rainbow", n: 7,  c: "#e8505b", ctr: "#ffffff" },
+    { id: "gekka",    nm: "月下美人",     r: 4, shape: "thin",    n: 24, c: "#f6f3ea", ctr: "#f2e08a", glow: true },
+  ];
+  const BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+  const DESC = {
+    1: "よく見かける花。", 2: "ちょっとめずらしい花。", 3: "なかなか咲かない花。", 4: "めったに咲かない幻の花。",
+  };
+
+  // ---- 日付：端末の現地時間で区切る ----
+  const pad = n => String(n).padStart(2, "0");
+  const dayKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+  const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const hhmm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const WD = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // ---- 決定的な乱数（同じ記録からは必ず同じ花が咲く） ----
+  function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  // ---- 状態（保存するのは「いつ飲んだか」だけ） ----
+  const state = { settings: { am: "08:00", pm: "21:00" }, days: {} };
+  const isDone = k => !!(state.days[k] && state.days[k].am && state.days[k].pm);
+
+  // ---- 導出値 ----
+  function streakEndingAt(key) {           // key の日を含めて遡った連続日数
+    let d = parseKey(key), n = 0;
+    while (isDone(dayKey(d))) { n++; d = addDays(d, -1); }
+    return n;
+  }
+  function currentStreak(now) {
+    const k = dayKey(now);
+    return isDone(k) ? streakEndingAt(k) : streakEndingAt(dayKey(addDays(now, -1)));
+  }
+  function bestStreak() {
+    const keys = Object.keys(state.days).filter(isDone).sort();
+    let best = 0, run = 0, prev = null;
+    for (const k of keys) { run = prev && dayKey(addDays(prev, 1)) === k ? run + 1 : 1; best = Math.max(best, run); prev = parseKey(k); }
+    return best;
+  }
+  function doses() {
+    const out = [];
+    for (const [k, v] of Object.entries(state.days)) { if (v.am) out.push({ k, t: v.am }); if (v.pm) out.push({ k, t: v.pm }); }
+    return out.sort((a, b) => a.t < b.t ? -1 : 1);
+  }
+  // i 本目の花を決める。入力は「何本目か・咲いた日・最初に飲んだ日・それまでの花」だけ。
+  // 時刻(ms)を使わないので、取り消し→再タップで引き直しはできない。
+  // 判定に使うのは前日までの確定済みの記録だけ（今日あとから達成しても結果は変わらない）。
+  function bloomAt(i, ds, prev) {
+    const k = ds[BLOOM_AT(i) - 1].k, rs = rulesetFor(k);
+    const lucky = streakEndingAt(dayKey(addDays(parseKey(k), -1))) >= rs.luckyStreak;
+    const month = parseKey(k).getMonth() + 1;
+    const rand = rng(hash(`v${rs.v}|${i}|${k}|${ds[0].k}`));
+    const w = lucky ? rs.luckyWeights : rs.weights;
+    let roll = rand() * w.reduce((a, b) => a + b, 0), rar = 1;
+    for (let j = 0; j < 4; j++) { if ((roll -= w[j]) < 0) { rar = j + 1; break; } }
+    // 天井：直前 pity-1 本に ★3以上がなければ確定
+    const recent = prev.slice(-(rs.pity - 1));
+    const pity = recent.length === rs.pity - 1 && recent.every(b => b.sp.r < 3);
+    if (pity && rar < 3) rar = 3;
+    const inVersion = s => (s.v || 1) <= rs.v;
+    let pool = SPECIES.filter(s => inVersion(s) && s.r === rar && (!s.months || s.months.includes(month)));
+    if (!pool.length) pool = SPECIES.filter(s => inVersion(s) && s.r === rar && !s.months);
+    const owned = new Set(prev.map(b => b.sp.id));
+    const fresh = pool.filter(s => !owned.has(s.id));
+    const pickNew = rand() < rs.newChance && fresh.length > 0;
+    const from = pickNew ? fresh : pool;
+    return { sp: from[Math.floor(rand() * from.length)], k, lucky, pity, v: rs.v };
+  }
+  function computeAll(now) {
+    const ds = doses(), total = ds.length;
+    let bloomed = 0; while (BLOOM_AT(bloomed) <= total) bloomed++;
+    const start = bloomed ? BLOOM_AT(bloomed - 1) : 0, need = BLOOM_AT(bloomed) - start, progress = total - start;
+    const blooms = []; for (let i = 0; i < bloomed; i++) blooms.push(bloomAt(i, ds, blooms));
+    let thirst = 0;
+    if (total) { const h = (now - new Date(ds[total - 1].t)) / 36e5; thirst = Math.max(0, Math.min(1, (h - 16) / 20)); }
+    const owned = {}; for (const b of blooms) owned[b.sp.id] = (owned[b.sp.id] || 0) + 1;
+    const luckyNow = streakEndingAt(dayKey(addDays(now, -1))) >= rulesetFor(dayKey(now)).luckyStreak;
+    return { total, bloomed, progress, need, thirst, blooms, owned, luckyNow };
+  }
+  // @logic-end
+
+  // ---- 花の描画 ----
+  function petals(sp, cx, cy, R, uid) {
+    const { shape, n, c } = sp; let g = "";
+    const rot = (i, k) => `transform="rotate(${(360 / k) * i} ${cx} ${cy})"`;
+    if (shape === "round" || shape === "notched") {
+      for (let i = 0; i < n; i++) {
+        g += `<ellipse cx="${cx}" cy="${cy - R * .52}" rx="${R * (n <= 4 ? .55 : .42)}" ry="${R * .5}" fill="${c}" ${rot(i, n)}/>`;
+        if (shape === "notched") g += `<circle cx="${cx}" cy="${cy - R * 1.02}" r="${R * .1}" fill="var(--surface)" ${rot(i, n)}/>`;
+      }
+    } else if (shape === "pointed") {
+      for (let i = 0; i < n; i++) g += `<path d="M${cx} ${cy} Q${cx - R * .32} ${cy - R * .55} ${cx} ${cy - R} Q${cx + R * .32} ${cy - R * .55} ${cx} ${cy}Z" fill="${c}" ${rot(i, n)}/>`;
+    } else if (shape === "thin") {
+      for (let i = 0; i < n; i++) g += `<ellipse cx="${cx}" cy="${cy - R * .55}" rx="${R * .12}" ry="${R * .45}" fill="${c}" ${rot(i, n)}/>`;
+    } else if (shape === "layered" || shape === "rose") {
+      const rings = shape === "rose" ? [1, .72, .45] : [1, .65];
+      rings.forEach((s, j) => { for (let i = 0; i < n; i++) g += `<ellipse cx="${cx}" cy="${cy - R * .5 * s}" rx="${R * .34 * s}" ry="${R * .5 * s}" fill="${c}" opacity="${1 - j * .12}" stroke="${sp.ctr}" stroke-opacity=".35" ${`transform="rotate(${(360 / n) * i + j * 18} ${cx} ${cy})"`}/>`; });
+    } else if (shape === "cup") {
+      g += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${c}"/>`;
+      for (let i = 0; i < n; i++) g += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - R}" stroke="${sp.ctr}" stroke-width="${R * .08}" opacity=".7" ${rot(i, n)}/>`;
+    } else if (shape === "tulip") {
+      g += `<path d="M${cx - R * .7} ${cy - R * .1} Q${cx - R * .8} ${cy + R * .8} ${cx} ${cy + R * .8} Q${cx + R * .8} ${cy + R * .8} ${cx + R * .7} ${cy - R * .1} L${cx + R * .4} ${cy - R * .7} L${cx + R * .15} ${cy - R * .2} L${cx} ${cy - R * .8} L${cx - R * .15} ${cy - R * .2} L${cx - R * .4} ${cy - R * .7}Z" fill="${c}"/>`;
+      return g;
+    } else if (shape === "cluster") {
+      const pts = [[0, 0], [-.5, -.3], [.5, -.3], [0, -.6], [-.55, .25], [.55, .25], [0, .5], [-.3, .05], [.3, .05]];
+      pts.forEach(([x, y], i) => {
+        const col = i % 2 ? sp.ctr : c, px = cx + x * R, py = cy + y * R, r = R * .26;
+        for (let k = 0; k < 4; k++) g += `<ellipse cx="${px}" cy="${py - r * .5}" rx="${r * .45}" ry="${r * .5}" fill="${col}" transform="rotate(${k * 90} ${px} ${py})"/>`;
+      });
+      return g;
+    } else if (shape === "spider") {
+      for (let i = 0; i < n; i++) {
+        g += `<path d="M${cx} ${cy} Q${cx + R * .3} ${cy - R * .5} ${cx} ${cy - R * .7}" stroke="${c}" stroke-width="${R * .13}" fill="none" stroke-linecap="round" ${rot(i, n)}/>`;
+        g += `<path d="M${cx} ${cy} Q${cx - R * .5} ${cy - R * .7} ${cx - R * .15} ${cy - R * 1.1}" stroke="${c}" stroke-width="${R * .03}" fill="none" ${rot(i + .5, n)}/>`;
+      }
+      return g + `<circle cx="${cx}" cy="${cy}" r="${R * .12}" fill="${c}"/>`;
+    } else if (shape === "rainbow") {
+      const hues = ["#e8505b", "#f29a3a", "#f2d24a", "#5cb85c", "#4aa3df", "#5f6fd8", "#a065d6"];
+      for (let i = 0; i < n; i++) g += `<ellipse cx="${cx}" cy="${cy - R * .52}" rx="${R * .38}" ry="${R * .5}" fill="${sp.mono ? c : hues[i % 7]}" ${rot(i, n)}/>`;
+    }
+    return g + `<circle cx="${cx}" cy="${cy}" r="${R * (shape === "thin" ? .3 : .22)}" fill="${sp.ctr}"/>`;
+  }
+  function flowerIcon(sp, locked) {
+    const body = locked
+      ? `<g opacity=".9" style="filter:brightness(0)">${petals(sp, 28, 28, 22)}</g>`
+      : (sp.glow ? `<circle cx="28" cy="28" r="26" fill="${sp.ctr}" opacity=".25"/>` : "") + petals(sp, 28, 28, 22);
+    return `<svg viewBox="0 0 56 56" aria-hidden="true">${locked ? `<g opacity=".18">${petals({ ...sp, c: "var(--fg)", ctr: "var(--fg)", mono: true }, 28, 28, 22)}</g>` : body}</svg>`;
+  }
+  function miniFlower(sp) {
+    return `<svg viewBox="0 0 36 48" aria-hidden="true"><path d="M18 48 V22" stroke="var(--stem)" stroke-width="2.5"/>
+      <ellipse cx="12" cy="36" rx="6" ry="2.6" fill="var(--leaf)" transform="rotate(-25 18 36)"/>${petals(sp, 18, 16, 14)}</svg>`;
+  }
+  function plantSVG(p, thirst) {
+    const base = 168, top = base - (14 + p * 9);
+    const leafColor = thirst > 0.5 ? "var(--leaf-dry)" : "var(--leaf)";
+    let g = "";
+    if (p === 0) {
+      g += `<ellipse cx="100" cy="${base - 3}" rx="7" ry="4.5" fill="var(--soil)" stroke="var(--leaf)" stroke-width="1.5"/>`;
+    } else {
+      g += `<path d="M100 ${base} Q104 ${(base + top) / 2} 100 ${top}" stroke="var(--stem)" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+      const pairs = Math.min(Math.ceil(p / 2), 5);
+      for (let i = 0; i < pairs; i++) {
+        const y = base - 12 - i * ((base - top - 10) / pairs), droop = 20 + thirst * 40, size = 14 - i;
+        g += `<ellipse cx="${100 - size}" cy="${y}" rx="${size}" ry="${size * .45}" fill="${leafColor}" transform="rotate(${droop - 40} 100 ${y})"/>`;
+        g += `<ellipse cx="${100 + size}" cy="${y}" rx="${size}" ry="${size * .45}" fill="${leafColor}" transform="rotate(${40 - droop} 100 ${y})"/>`;
+      }
+      if (p >= 9) {   // つぼみ（中身はまだ秘密）
+        const s = 1 + (p - 9) * .18;
+        g += `<ellipse cx="100" cy="${top - 8 * s}" rx="${7 * s}" ry="${10 * s}" fill="var(--bud)"/>`;
+        g += `<path d="M${100 - 7 * s} ${top - 3} Q100 ${top + 6} ${100 + 7 * s} ${top - 3}" fill="var(--leaf)"/>`;
+        if (p >= 12) g += `<text x="100" y="${top - 5 * s}" text-anchor="middle" font-size="${11 * s}" font-weight="700" fill="var(--surface)" font-family="var(--f-display)">?</text>`;
+      }
+    }
+    return `<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+      <g class="sway" style="transform:rotate(${(thirst * 28).toFixed(1)}deg)">${g}</g>
+      <rect x="62" y="164" width="76" height="12" rx="3" fill="var(--pot-rim)"/>
+      <path d="M68 176 L132 176 L124 214 L76 214 Z" fill="var(--pot)"/>
+      <ellipse cx="100" cy="166" rx="34" ry="4" fill="var(--soil)"/>
+      <g id="drops"></g></svg>`;
+  }
+  function waterAnim() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const g = document.querySelector("#plant #drops"); if (!g) return;
+    for (let i = 0; i < 6; i++) {
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      const x = 80 + i * 8, y = 20 + (i % 3) * 10;
+      c.setAttribute("d", `M${x} ${y} q4 7 0 10 q-4 -3 0 -10z`);
+      c.setAttribute("class", "drop"); c.style.animationDelay = (i * .08) + "s"; g.append(c);
+    }
+    setTimeout(() => g.replaceChildren(), 1500);
+  }
+  const starStr = r => "★".repeat(r) + "☆".repeat(4 - r);
+
+  // ---- 永続化 ----
+  let col = null;
+  const sync = document.getElementById("sync");
+  const setSync = (msg, warn) => { sync.textContent = msg; sync.classList.toggle("warn", !!warn); };
+  function loadLocal() {
+    try { const v = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+      if (v) { Object.assign(state.settings, v.settings || {}); state.days = v.days || {}; } } catch (_) {}
+  }
+  function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
+  async function initStore() {
+    loadLocal(); render();
+    const c = window.claude;
+    if (!c || !c.use) { setSync("このスマホに保存しています"); return; }
+    const [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+    const uid = user ? await user.id() : null;
+    if (!db || !uid) { setSync("この端末のブラウザにだけ保存しています（サインインで同期）", true); return; }
+    col = db.collection("data/users/" + uid);
+    col.onSnapshot(snap => {
+      const days = {};
+      for (const d of snap.docs) {
+        const v = d.data() || {};
+        if (d.id === "settings") Object.assign(state.settings, v);
+        else days[d.id] = { am: v.am ?? null, pm: v.pm ?? null };
+      }
+      state.days = days; saveLocal();
+      setSync(snap.metadata && snap.metadata.hasPendingWrites ? "保存中…" : "アカウントに保存済み・他の端末と同期します");
+      render();
+    }, e => setSync(`同期できませんでした（${e && e.code || "unknown"}）。この端末には保存されています`, true));
+  }
+  async function persistDay(key) {
+    saveLocal(); if (!col) return;
+    const v = state.days[key];
+    try { await col.doc(key).set({ am: v.am, pm: v.pm }); }
+    catch (e) { setSync(`保存に失敗しました（${e && e.code || "unknown"}）。もう一度タップしてください`, true); }
+  }
+  async function persistSettings() {
+    saveLocal(); if (!col) return;
+    try { await col.doc("settings").set({ am: state.settings.am, pm: state.settings.pm }); } catch (_) {}
+  }
+
+  // ---- 描画 ----
+  function slotStatus(key, slot, now) {
+    if (state.days[key] && state.days[key][slot]) return "taken";
+    const today = dayKey(now);
+    if (key < today) return firstDayKey() && key >= firstDayKey() ? "missed" : "before";   // 使い始める前の日は飲み忘れ扱いしない
+    if (key > today) return "future";
+    return now.getHours() * 60 + now.getMinutes() >= toMin(state.settings[slot]) ? "due" : "pending";
+  }
+  const firstDayKey = () => Object.keys(state.days).filter(k => state.days[k].am || state.days[k].pm).sort()[0];
+  const $ = id => document.getElementById(id);
+  let plantSig = "", filter = 0;
+
+  function render() {
+    const now = new Date(), key = dayKey(now), A = computeAll(now);
+    $("today").textContent = `${key.replace(/-/g, ".")}（${WD[now.getDay()]}）`;
+    $("streak").textContent = currentStreak(now);
+
+    // plant
+    const p = Math.floor(A.progress * CYCLE / A.need);   // 序盤の短い周期も 0..13 の見た目にそろえる
+    const sig = `${p}|${A.thirst.toFixed(2)}`;
+    if (sig !== plantSig) { $("plant").innerHTML = plantSVG(p, A.thirst); plantSig = sig; }
+    const stage = p === 0 ? "種" : p < 4 ? "芽" : p < 9 ? "若葉" : p < 12 ? "つぼみ" : "もうすぐ開花";
+    $("plant").setAttribute("aria-label", `育てている植物：${stage}`);
+    $("mood").textContent = A.total === 0 ? "種をまきました"
+      : A.thirst >= .6 ? "のどがかわいてしおれています" : A.thirst > 0 ? "少し元気がありません" : "元気に育っています";
+    const gauge = $("gauge"); gauge.replaceChildren();
+    for (let i = 0; i < A.need; i++) { const t = document.createElement("i"); if (i < A.progress) t.className = "on"; gauge.append(t); }
+    $("grow").textContent = `${stage}・開花まで あと${A.need - A.progress}回`;
+    $("luck").hidden = !A.luckyNow;
+
+    // slots
+    for (const sl of ["am", "pm"]) {
+      const st = slotStatus(key, sl, now), el = $("slot-" + sl);
+      el.dataset.status = st;
+      $("due-" + sl).textContent = `目安 ${state.settings[sl]}`;
+      const txt = st === "taken" ? `✓ ${hhmm(state.days[key][sl])} に服用` : st === "due" ? "時間です" : "未服用";
+      $("state-" + sl).textContent = txt;
+      el.setAttribute("aria-pressed", String(st === "taken"));
+      el.setAttribute("aria-label", `${sl === "am" ? "朝" : "夜"}の薬：${txt}`);
+    }
+
+    // garden
+    $("garden-n").textContent = `${A.bloomed}本`;
+    const gd = $("garden"); gd.replaceChildren();
+    if (!A.bloomed) { const e = document.createElement("span"); e.className = "empty"; e.textContent = "最初の花が咲くとここに並びます"; gd.append(e); }
+    else {
+      const SHOW = 30, start = Math.max(0, A.bloomed - SHOW);
+      if (start) { const m = document.createElement("span"); m.className = "more"; m.textContent = `+${start}`; gd.append(m); }
+      for (let i = start; i < A.bloomed; i++) { const w = document.createElement("span"); w.title = A.blooms[i].sp.nm; w.innerHTML = miniFlower(A.blooms[i].sp); gd.append(w); }
+    }
+
+    // zukan
+    const ownedN = Object.keys(A.owned).length;
+    $("zukan-n").textContent = `${ownedN} / ${SPECIES.length}種`;
+    const zk = $("zukan"); zk.replaceChildren();
+    for (const sp of SPECIES) {
+      if (filter && sp.r !== filter) continue;
+      const got = A.owned[sp.id] || 0;
+      const c = document.createElement("div"); c.className = `card r${sp.r}` + (got ? "" : " locked");
+      c.innerHTML = flowerIcon(sp, !got);
+      const nm = document.createElement("span"); nm.className = "nm";
+      nm.textContent = got ? sp.nm : (sp.season ? `${sp.season}に咲く花` : "？？？");
+      const st = document.createElement("span"); st.className = "stars" + (sp.r === 4 ? " r4" : ""); st.textContent = starStr(sp.r);
+      const n = document.createElement("span"); n.className = "n"; n.textContent = got ? `×${got}` : "未発見";
+      c.append(nm, st, n); zk.append(c);
+    }
+
+    // badges
+    const best = Math.max(bestStreak(), currentStreak(now));
+    const bw = $("badges"); bw.replaceChildren();
+    for (const [d, t] of MILESTONES) {
+      const b = document.createElement("div"); b.className = "badge" + (best >= d ? " got" : "");
+      const dd = document.createElement("span"); dd.className = "d"; dd.textContent = d;
+      const tt = document.createElement("span"); tt.className = "t"; tt.textContent = best >= d ? t : "日連続";
+      b.append(dd, tt); bw.append(b);
+    }
+
+    // week
+    const week = $("week"); week.replaceChildren();
+    for (let i = 6; i >= 0; i--) {
+      const d = addDays(now, -i), k = dayKey(d);
+      const c = document.createElement("div"); c.className = "day" + (i === 0 ? " today" : "");
+      const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = `${d.getDate()}${WD[d.getDay()]}`;
+      c.append(dn);
+      for (const sl of ["am", "pm"]) {
+        const st = slotStatus(k, sl, now), x = document.createElement("span");
+        x.className = `cell ${sl}` + (st === "taken" ? " on" : st === "missed" ? " miss" : "");
+        x.title = `${k} ${sl === "am" ? "朝" : "夜"}`; c.append(x);
+      }
+      week.append(c);
+    }
+    $("t-am").value = state.settings.am; $("t-pm").value = state.settings.pm;
+  }
+
+  // filters
+  const FL = [[0, "すべて"], [1, "★1"], [2, "★2"], [3, "★3"], [4, "★4"]];
+  for (const [v, label] of FL) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.id = "f-" + v;
+    b.setAttribute("aria-pressed", String(v === filter));
+    b.addEventListener("click", () => { filter = v; for (const [w] of FL) $("f-" + w).setAttribute("aria-pressed", String(w === v)); render(); });
+    $("filters").append(b);
+  }
+
+  // reveal
+  let lastFocus = null;
+  function reveal(b, isNew) {
+    lastFocus = document.activeElement;
+    $("rv-art").innerHTML = flowerIcon(b.sp, false);
+    $("rv-name").textContent = b.sp.nm;
+    $("rv-stars").textContent = starStr(b.sp.r); $("rv-stars").className = "stars" + (b.sp.r === 4 ? " r4" : "");
+    $("rv-desc").textContent = DESC[b.sp.r] + (b.sp.season ? ` ${b.sp.season}だけに咲きます。` : "")
+      + (b.pity ? " 天井で★3以上が確定しました。" : b.lucky ? " 連続記録のおかげでレア率アップ中でした。" : "");
+    $("rv-new").hidden = !isNew;
+    $("reveal").hidden = false; $("rv-close").focus();
+  }
+  function closeReveal() { $("reveal").hidden = true; if (lastFocus) lastFocus.focus(); }
+  $("rv-close").addEventListener("click", closeReveal);
+  $("reveal").addEventListener("click", e => { if (e.target.id === "reveal") closeReveal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("reveal").hidden) closeReveal(); });
+
+  let tt;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2800); }
+
+  // ---- 操作 ----
+  for (const sl of ["am", "pm"]) {
+    $("slot-" + sl).addEventListener("click", () => {
+      const now = new Date(), key = dayKey(now);
+      const before = computeAll(now), beforeStreak = currentStreak(now);
+      const rec = state.days[key] || { am: null, pm: null };
+      rec[sl] = rec[sl] ? null : now.toISOString();
+      state.days[key] = rec;
+      render(); persistDay(key);
+      if (!rec[sl]) { toast("取り消しました"); return; }
+      waterAnim();
+      const after = computeAll(now), afterStreak = currentStreak(now);
+      if (after.bloomed > before.bloomed) {
+        const b = after.blooms[after.bloomed - 1];
+        setTimeout(() => reveal(b, !before.owned[b.sp.id]), 700);
+        return;
+      }
+      const m = MILESTONES.find(([d]) => d === afterStreak && afterStreak > beforeStreak);
+      if (m) toast(`バッジ獲得：${m[0]}日連続「${m[1]}」`);
+      else if (before.thirst >= .6) toast("水をあげました。元気になりました");
+      else if (isDone(key)) toast(`きょうも達成。連続${afterStreak}日`);
+      else toast(`水をあげました。開花まであと${after.need - after.progress}回`);
+    });
+    $("t-" + sl).addEventListener("change", e => {
+      if (!e.target.value) return;
+      state.settings[sl] = e.target.value; render(); persistSettings();
+    });
+  }
+
+  setInterval(() => { if ($("reveal").hidden) render(); }, 30 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+  // ---- バックアップ（書き出し・読み込み） ----
+  const SCHEMA = 1;
+  const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const isIso = v => v === null || (typeof v === "string" && !Number.isNaN(Date.parse(v)));
+  $("bk-export").addEventListener("click", () => {
+    const data = { app: "kusuri", schema: SCHEMA, exportedAt: new Date().toISOString(), settings: state.settings, days: state.days };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `kusuri-backup-${dayKey(new Date())}.json`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast("書き出しました");
+  });
+  $("bk-import").addEventListener("change", async e => {
+    const file = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!file) return;
+    let data;
+    try { data = JSON.parse(await file.text()); } catch (_) { toast("読み込めませんでした。バックアップのファイルを選んでください"); return; }
+    if (!data || data.app !== "kusuri" || typeof data.days !== "object") { toast("このアプリのバックアップではありません"); return; }
+    if (data.schema > SCHEMA) { toast("新しい版のバックアップです。アプリを更新してから読み込んでください"); return; }
+    let added = 0;
+    for (const [k, v] of Object.entries(data.days)) {
+      if (!DAY_RE.test(k) || !v || !isIso(v.am ?? null) || !isIso(v.pm ?? null)) continue;   // 壊れた行は捨てる
+      const cur = state.days[k] || { am: null, pm: null };
+      const merged = { am: cur.am || v.am || null, pm: cur.pm || v.pm || null };          // 既存を優先して足りない分だけ
+      if (merged.am !== cur.am || merged.pm !== cur.pm) { state.days[k] = merged; added++; persistDay(k); }
+    }
+    saveLocal(); render();
+    toast(added ? `${added}日分の記録を追加しました` : "追加する記録はありませんでした");
+  });
+  // ブラウザの容量整理で消されにくくする（許可されなくても動作は同じ）
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+  initStore();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
