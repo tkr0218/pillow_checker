@@ -1,6 +1,6 @@
 // 朝夜のくすり Service Worker
 // アプリを更新したら VERSION を上げる（古いキャッシュが消え、新しいファイルが入る）
-const VERSION = "2026-10-10.6";
+const VERSION = "2026-10-10.7";
 const CACHE = `kusuri-${VERSION}`;
 const FONT_CACHE = "kusuri-fonts";   // フォントは版をまたいで使い回す
 const SHELL = [
