@@ -91,6 +91,10 @@ h2 .count{margin-left:auto;font-family:var(--f-mono);font-size:.8rem;color:var(-
 .slot[data-status="taken"] .state{color:var(--c)}
 .slot[data-status="due"]{border-color:var(--c);animation:breathe 2.4s ease-in-out infinite}
 .slot[data-status="due"] .state{color:var(--c)}
+.slot[data-status="next"]{border-color:color-mix(in srgb,var(--c) 50%,var(--line))}
+.slot[data-status="next"] .state{color:var(--c)}
+.slot[data-status="late"] .state{color:var(--warn);font-weight:500;font-size:.82rem}
+.slot[data-status="late"] .label{opacity:.75}
 @keyframes breathe{50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 18%,transparent)}}
 
 /* Garden bed */
@@ -564,7 +568,12 @@ img{max-width:100%}
     const today = dayKey(now);
     if (key < today) return firstDayKey() && key >= firstDayKey() ? "missed" : "before";   // 使い始める前の日は飲み忘れ扱いしない
     if (key > today) return "future";
-    return now.getHours() * 60 + now.getMinutes() >= toMin(state.settings[slot]) ? "due" : "pending";
+    // 1日を朝と夜の中間で区切る。区切りを過ぎたら主役は夜に移る（朝はまだでも「今日中ならOK」）
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const am = toMin(state.settings.am), pm = toMin(state.settings.pm);
+    const split = pm > am ? Math.round((am + pm) / 2) : 15 * 60;
+    if (slot === "am") return nowMin < am ? "pending" : nowMin < split ? "due" : "late";
+    return nowMin >= pm ? "due" : nowMin >= split ? "next" : "pending";
   }
   const firstDayKey = () => Object.keys(state.days).filter(k => state.days[k].am || state.days[k].pm).sort()[0];
   const $ = id => document.getElementById(id);
@@ -593,7 +602,8 @@ img{max-width:100%}
       const st = slotStatus(key, sl, now), el = $("slot-" + sl);
       el.dataset.status = st;
       $("due-" + sl).textContent = `目安 ${state.settings[sl]}`;
-      const txt = st === "taken" ? `✓ ${hhmm(state.days[key][sl])} に服用` : st === "due" ? "時間です" : "未服用";
+      const txt = st === "taken" ? `✓ ${hhmm(state.days[key][sl])} に服用`
+        : st === "due" ? "時間です" : st === "next" ? "次はこちら" : st === "late" ? "今日中ならOK" : "未服用";
       $("state-" + sl).textContent = txt;
       el.setAttribute("aria-pressed", String(st === "taken"));
       el.setAttribute("aria-label", `${sl === "am" ? "朝" : "夜"}の薬：${txt}`);
