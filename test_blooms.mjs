@@ -1,4 +1,4 @@
-// 朝夜のくすり：抽選ロジックの回帰テスト
+// 花あつめ：抽選ロジックの回帰テスト
 // 実行: TZ=Asia/Tokyo node test_blooms.mjs          （スナップショット更新は --update）
 // index.html の @logic-start〜@logic-end をそのまま読み込むので、ページと同じコードを検証する。
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
