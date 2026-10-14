@@ -10,7 +10,9 @@ const src = readFileSync(HTML, "utf8");
 const logic = src.slice(src.indexOf("// @logic-start"), src.indexOf("// @logic-end"));
 
 // 毎回まっさらなロジックを作る（テスト同士で RULESETS などの変更が漏れないように）
-const load = () => new Function(`${logic}; return { state, computeAll, dayKey, addDays, RULESETS, SPECIES, BLOOM_AT };`)();
+const load = () => new Function(`${logic}; return { state, computeAll, dayKey, addDays, RULESETS, SPECIES, CADENCES, normalizeSettings, setTodaySlots, slotsFor, isDone, currentStreak };`)();
+const LEGACY_SNAP = new URL("./blooms.legacy.snapshot.json", import.meta.url);
+const CUTOVER_DAY = "2026-10-14";
 
 // 2026年1年分：基本は毎日朝夜、ときどき飲み忘れ
 function fillYear(L, { amHour = 8 } = {}) {
@@ -78,9 +80,68 @@ test("天井：★3以上なしが pity 本を超えて続かない", () => {
   assert.ok(max <= pity - 1, `最大 ${max} 本続いた`);
 });
 
-test("序盤は早く咲く（4回・12回・24回、以降14回ごと）", () => {
+test("ルール切り替え（2026-10-14 14:00）より前に咲いた花は、旧ルールのときと同じ", () => {
+  const L = load(); fillYear(L);
+  const legacy = JSON.parse(readFileSync(LEGACY_SNAP, "utf8")).filter(x => x < CUTOVER_DAY);
+  const now = summary(L.computeAll(END)).filter(x => x < CUTOVER_DAY);
+  assert.ok(legacy.length > 30, "比較対象が少なすぎる");
+  assert.deepEqual(now, legacy);
+});
+
+// 切り替え後に使い始めた人：毎日全部飲む
+function fillPerfect(L, startK, nDays, skip = () => false) {
+  const [y, m, d] = startK.split("-").map(Number), start = new Date(y, m - 1, d);
+  for (let i = 0; i < nDays; i++) {
+    const day = L.addDays(start, i), k = L.dayKey(day);
+    const am = new Date(day); am.setHours(8); const pm = new Date(day); pm.setHours(21);
+    L.state.days[k] = { am: skip(i, "am") ? null : am.toISOString(), pm: skip(i, "pm") ? null : pm.toISOString() };
+  }
+}
+
+test("新ルール：1本目4回、以降6回ごと", () => {
+  const L = load(); fillPerfect(L, "2026-11-01", 8);   // 16回
+  const A = L.computeAll(new Date(2026, 10, 8, 23));
+  // 4回目=2日目夜、10回目=5日目夜、16回目=8日目夜
+  assert.deepEqual(A.blooms.map(b => b.k), ["2026-11-02", "2026-11-05", "2026-11-08"]);
+});
+
+test("新ルール：飲めなかった日があると、その次の花は4回（育てている花はそのまま）", () => {
   const L = load();
-  assert.deepEqual([0, 1, 2, 3, 4].map(L.BLOOM_AT), [4, 12, 24, 38, 52]);
+  fillPerfect(L, "2026-11-01", 9, (i, s) => i === 2 && s === "pm");   // 3日目の夜だけ飲まない
+  const A = L.computeAll(new Date(2026, 10, 9, 23));
+  // 1本目：4回目＝2日目夜
+  // 2本目：6回のまま（3日目朝, 4日目朝夜, 5日目朝夜, 6日目朝）＝6日目
+  // 3本目：2本目を育てている間に失敗があったので4回（6日目夜, 7日目朝夜, 8日目朝）＝8日目
+  // 4本目：失敗なしなので6回（8日目夜, 9日目朝夜 …）＝まだ咲かない
+  assert.deepEqual(A.blooms.map(b => b.k), ["2026-11-02", "2026-11-06", "2026-11-08"]);
+  assert.equal(A.need, 6);
+});
+
+test("使い始めた日の途中から始めても、その日は失敗として数えない", () => {
+  const L = load();
+  fillPerfect(L, "2026-11-01", 5, (i, s) => i === 0 && s === "am");   // 初日は夜から開始
+  const A = L.computeAll(new Date(2026, 10, 5, 23));
+  // 記録: 1日目夜(1) 2日目(3) 3日目朝(4→1本目) … 2本目は6回 ＝ 3日目夜,4日目朝夜,5日目朝夜 で5回 → まだ
+  assert.deepEqual(A.blooms.map(b => b.k), ["2026-11-03"]);
+  assert.equal(A.need - A.progress, 1);
+});
+
+test("予定の変更は今日から。過去の日の判定と連続記録は変わらない", () => {
+  const L = load(); fillPerfect(L, "2026-11-01", 10);
+  const now = new Date(2026, 10, 10, 23);
+  const before = L.currentStreak(now);
+  L.setTodaySlots("2026-11-10", [...L.slotsFor("2026-11-10"), { id: "s1", name: "昼", time: "12:30" }]);
+  assert.equal(L.slotsFor("2026-11-09").length, 2);
+  assert.equal(L.slotsFor("2026-11-10").length, 3);
+  assert.ok(L.isDone("2026-11-09"));
+  assert.ok(!L.isDone("2026-11-10"), "今日は昼を飲んでいないので未達成");
+  assert.equal(L.currentStreak(now), before - 1, "今日の分だけ未達成になり、昨日までの連続は残る");
+});
+
+test("旧形式の設定（am/pm）はそのまま読める", () => {
+  const L = load();
+  const s = L.normalizeSettings({ am: "07:30", pm: "22:00" });
+  assert.deepEqual(s.schedules[0].slots.map(x => [x.id, x.name, x.time]), [["am", "朝", "07:30"], ["pm", "夜", "22:00"]]);
 });
 
 test("季節限定の花は季節外に咲かない", () => {

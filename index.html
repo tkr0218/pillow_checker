@@ -58,7 +58,12 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .gauge i.on{background:var(--fg)}
 
 /* Today */
-.box{display:grid;grid-template-columns:1fr 1fr}
+.box{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))}
+.box[data-n="3"] .slot .label{font-size:1.35rem}
+.box[data-n="3"] .slot + .slot{padding-left:12px}
+.box[data-n="3"] .slot .state{font-size:.8rem}
+.box[data-n="4"] .slot:nth-child(3){border-left:0;padding-left:0}
+.box[data-n="4"] .slot:nth-child(n+3){border-top:1px solid var(--line);padding-top:16px}
 .slot{--c:var(--fg);appearance:none;border:0;border-radius:0;background:none;color:var(--fg);font:inherit;text-align:left;cursor:pointer;
   padding:4px 16px 8px 0;min-height:120px;display:grid;gap:2px;align-content:start}
 .slot + .slot{border-left:1px solid var(--line);padding-left:20px}
@@ -110,12 +115,23 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .day.today .dn{color:var(--fg);font-weight:700}
 .cell{width:10px;height:10px;border-radius:50%;background:var(--line-2)}
 .cell.on{background:var(--accent)}
+.cell.pre{background:transparent}
 .cell.miss{background:transparent;box-shadow:inset 0 0 0 1px var(--warn)}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.72rem;color:var(--muted);margin-top:14px}
 .legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .legend .lg-on{background:var(--accent)}
 .legend .lg-miss{box-shadow:inset 0 0 0 1px var(--warn)}
 
+/* Schedule editor */
+.sched{display:grid;gap:14px}
+.sched-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:end}
+.sched-row label{display:grid;gap:2px;font-size:.72rem;color:var(--muted);min-width:0}
+.sched-row input{font:400 1.05rem var(--f-body);padding:4px 0;border:0;border-bottom:1px solid var(--line-2);border-radius:0;background:transparent;color:var(--fg);width:100%;min-width:0}
+.sched-row input[type=time]{font-family:var(--f-num);width:auto}
+.sched-row input:focus-visible{outline:none;border-bottom-color:var(--fg)}
+.textbtn{font:700 .82rem var(--f-body);padding:4px 0;border:0;border-bottom:1px solid currentColor;border-radius:0;background:none;color:var(--fg);cursor:pointer;justify-self:start}
+.textbtn.sub{color:var(--muted);font-weight:400}
+.textbtn:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
 /* Settings */
 .settings{display:flex;gap:28px;flex-wrap:wrap}
 .settings label{display:grid;gap:2px;font-size:.78rem;color:var(--muted)}
@@ -176,27 +192,14 @@ img{max-width:100%}
 
   <section aria-labelledby="h-today">
     <h2 id="h-today">今日の服用</h2>
-    <div class="box">
-      <button class="slot" id="slot-am" data-slot="am" type="button">
-        <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g></svg>朝</span>
-        <span class="due" id="due-am"></span>
-        <span class="state" id="state-am">未服用</span>
-        <span class="stamp" aria-hidden="true"><b>済</b><i id="stamp-am"></i></span>
-      </button>
-      <button class="slot" id="slot-pm" data-slot="pm" type="button">
-        <span class="label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/><circle cx="21" cy="9" r=".8" fill="currentColor"/></svg>夜</span>
-        <span class="due" id="due-pm"></span>
-        <span class="state" id="state-pm">未服用</span>
-        <span class="stamp" aria-hidden="true"><b>済</b><i id="stamp-pm"></i></span>
-      </button>
-    </div>
+    <div class="box" id="box"></div>
     <p class="hint">飲んだらタップして記録します。もう一度タップすると取り消せます。</p>
   </section>
 
   <section aria-labelledby="h-garden">
     <h2 id="h-garden">咲いた花 <span class="count" id="garden-n"></span></h2>
     <div class="garden" id="garden"></div>
-    <p class="hint">記録の回数に応じて花が咲きます。1本目は4回、2本目は12回、3本目は24回、以降は14回ごとです。種類は咲いたときに決まります。前日まで3日以上連続していると★3・★4が出やすくなり、★3以上が8本続けて出なかった場合、次は★3以上になります。</p>
+    <p class="hint">記録4回で1本目が咲き、その後は6回ごとに咲きます。予定を全部飲めなかった日があった場合、いま育てている花はそのままで、その次の花が4回で咲きます。種類は咲いたときに決まります。前日まで3日以上連続していると★3・★4が出やすくなり、★3以上が8本続けて出なかった場合、次は★3以上になります。</p>
   </section>
 
   <section aria-labelledby="h-zukan">
@@ -213,16 +216,13 @@ img{max-width:100%}
   <section aria-labelledby="h-week">
     <h2 id="h-week">直近7日間</h2>
     <div class="week" id="week"></div>
-    <div class="legend"><span>上段：朝　下段：夜</span><span><i class="lg-on"></i>服用</span><span><i class="lg-miss"></i>未服用</span></div>
+    <div class="legend"><span>上から時刻順</span><span><i class="lg-on"></i>服用</span><span><i class="lg-miss"></i>未服用</span></div>
   </section>
 
   <section aria-labelledby="h-set">
-    <h2 id="h-set">飲む時刻の目安</h2>
-    <div class="settings">
-      <label for="t-am">朝<input type="time" id="t-am" value="08:00"></label>
-      <label for="t-pm">夜<input type="time" id="t-pm" value="21:00"></label>
-    </div>
-    <p class="hint">目安の時刻を過ぎると表示が変わります。その日のうちであれば、時刻に関係なく記録できます。</p>
+    <h2 id="h-set">飲む予定</h2>
+    <div class="sched" id="sched"></div>
+    <p class="hint">1日1〜4回まで設定できます。変更は今日から適用され、昨日までの記録の判定は変わりません。目安の時刻を過ぎると表示が変わります。その日のうちであれば、時刻に関係なく記録できます。</p>
     <p class="sync" id="sync">読み込み中…</p>
   </section>
 
@@ -263,7 +263,8 @@ img{max-width:100%}
   //  2. ルールを変えたいときは、RULESETS に新しい版を from（適用開始日）つきで足す。
   //     各開花は「咲いた日に有効だった版」で抽選されるので、過去の花は変わらない。
   //  3. 花を足すときは v に新しい版番号をつける。古い版の抽選には出てこない。
-  //  4. 開花タイミング（BLOOM_AT）は版をまたいで固定。変えると何本目の花かがずれる。
+  //  4. 開花タイミングも CADENCES に「適用開始の時刻」つきで追記する。
+  //     各記録はその記録時刻に有効だったタイミングで判定されるので、それ以前に咲いた花は変わらない。
   //  変更したら test_blooms.mjs の固定スナップショットが通ることを確認する。
   // ================================================================
   const RULESETS = [
@@ -276,9 +277,15 @@ img{max-width:100%}
   ];
   const rulesetFor = dayK => RULESETS.filter(r => r.from <= dayK).pop();
 
-  // n 本目（0始まり）の花が咲く累計水やり回数。序盤は早く、4本目からは14回ごと。
-  const EARLY = [4, 12, 24], CYCLE = 14;
-  const BLOOM_AT = n => n < EARLY.length ? EARLY[n] : EARLY[EARLY.length - 1] + CYCLE * (n - EARLY.length + 1);
+  // 何回の記録で花が咲くか。from は ISO 時刻（記録時刻で比較）。追記のみ。
+  //  legacy: 1本目4回、2本目8回、3本目12回、以降14回（2026-10-14 14:00 より前の記録）
+  //  short : 1本目4回、以降6回。前の花を育てている間に「予定を全部飲めなかった日」があれば、次の花は4回
+  const CADENCES = [
+    { from: "1970-01-01T00:00:00.000Z", kind: "legacy", steps: [4, 8, 12], rest: 14 },
+    { from: "2026-10-14T05:00:00.000Z", kind: "short", first: 4, normal: 6, afterMiss: 4 },
+  ];
+  const cadenceFor = iso => CADENCES.filter(c => c.from <= iso).pop();
+  const CYCLE = 14;   // 植物の絵の段階数（見た目用）
 
   // 花図鑑。v は追加された版、shape は描き方、months は咲く月（季節限定）
   const SPECIES = [
@@ -329,9 +336,42 @@ img{max-width:100%}
   function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function rng(seed) { let a = seed; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-  // ---- 状態（保存するのは「いつ飲んだか」だけ） ----
-  const state = { settings: { am: "08:00", pm: "21:00" }, days: {} };
-  const isDone = k => !!(state.days[k] && state.days[k].am && state.days[k].pm);
+  // ---- 状態（保存するのは「いつ飲んだか」と「予定」だけ） ----
+  // days["YYYY-MM-DD"] = { <予定のid>: 記録時刻ISO | null, ... }
+  // settings.schedules = [{ from: "YYYY-MM-DD", slots: [{ id, name, time }] }]  …適用開始日つき、追記のみ
+  //   予定を変えると「今日から」の版が足される。過去の日は、その日に有効だった予定で判定する。
+  // 旧形式 settings.am / settings.pm は読み込み時に schedules へ移す（id は "am" / "pm" のまま＝記録は変換不要）
+  const MAX_SLOTS = 4;
+  const SLOT_DEFAULTS = [["朝", "08:00"], ["昼", "12:30"], ["夜", "21:00"], ["寝る前", "23:00"]];
+  const state = { settings: {}, days: {} };
+  function normalizeSettings(s) {
+    const out = { ...s };
+    if (!Array.isArray(out.schedules) || !out.schedules.length) {
+      out.schedules = [{ from: "2000-01-01", slots: [
+        { id: "am", name: "朝", time: s.am || "08:00" },
+        { id: "pm", name: "夜", time: s.pm || "21:00" },
+      ] }];
+    }
+    out.schedules = out.schedules.map(sc => ({ from: sc.from, slots: sortSlots(sc.slots) })).sort((a, b) => a.from < b.from ? -1 : 1);
+    return out;
+  }
+  const sortSlots = slots => [...slots].sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+  state.settings = normalizeSettings(state.settings);
+  const scheduleFor = k => state.settings.schedules.filter(s => s.from <= k).pop() || state.settings.schedules[0];
+  const slotsFor = k => scheduleFor(k).slots;
+  const isDone = k => { const rec = state.days[k]; return !!rec && slotsFor(k).every(s => rec[s.id]); };
+  const firstUseDay = () => Object.keys(state.days).filter(k => Object.values(state.days[k]).some(Boolean)).sort()[0];
+  // 予定を変更：今日の版があれば置き換え、なければ今日からの版を足す
+  function setTodaySlots(todayK, slots) {
+    const sch = state.settings.schedules, cur = scheduleFor(todayK);
+    const next = sortSlots(slots);
+    if (JSON.stringify(cur.slots) === JSON.stringify(next)) return false;
+    const last = sch[sch.length - 1];
+    if (last.from === todayK) last.slots = next; else sch.push({ from: todayK, slots: next });
+    // 置き換えた結果、前の版と同じになったら今日の版は不要
+    if (sch.length > 1 && JSON.stringify(sch[sch.length - 1].slots) === JSON.stringify(sch[sch.length - 2].slots) && sch[sch.length - 1].from === todayK) sch.pop();
+    return true;
+  }
 
   // ---- 導出値 ----
   function streakEndingAt(key) {           // key の日を含めて遡った連続日数
@@ -351,14 +391,29 @@ img{max-width:100%}
   }
   function doses() {
     const out = [];
-    for (const [k, v] of Object.entries(state.days)) { if (v.am) out.push({ k, t: v.am }); if (v.pm) out.push({ k, t: v.pm }); }
+    for (const [k, v] of Object.entries(state.days)) for (const t of Object.values(v)) if (typeof t === "string") out.push({ k, t });
     return out.sort((a, b) => a.t < b.t ? -1 : 1);
+  }
+  // [fromK, toK) の間に「予定を全部飲めなかった日」があるか
+  // 使い始めた日は途中から始めることが多いので数えない（翌日から判定）
+  function hadMiss(fromK, toK, firstK) {
+    if (!fromK || !firstK) return false;
+    const startK = fromK > firstK ? fromK : dayKey(addDays(parseKey(firstK), 1));
+    for (let d = parseKey(startK); dayKey(d) < toK; d = addDays(d, 1)) if (!isDone(dayKey(d))) return true;
+    return false;
+  }
+  // j 本目の花に必要な回数。iso はその時点の記録時刻、prevStart/curStart は前の花・今の花を育て始めた日
+  function targetFor(j, iso, prevStart, curStart, firstK) {
+    const c = cadenceFor(iso);
+    if (c.kind === "legacy") return j < c.steps.length ? c.steps[j] : c.rest;
+    if (j === 0) return c.first;
+    return hadMiss(prevStart, curStart, firstK) ? c.afterMiss : c.normal;
   }
   // i 本目の花を決める。入力は「何本目か・咲いた日・最初に飲んだ日・それまでの花」だけ。
   // 時刻(ms)を使わないので、取り消し→再タップで引き直しはできない。
   // 判定に使うのは前日までの確定済みの記録だけ（今日あとから達成しても結果は変わらない）。
-  function bloomAt(i, ds, prev) {
-    const k = ds[BLOOM_AT(i) - 1].k, rs = rulesetFor(k);
+  function bloomAt(i, ds, n, prev) {
+    const k = ds[n].k, rs = rulesetFor(k);
     const lucky = streakEndingAt(dayKey(addDays(parseKey(k), -1))) >= rs.luckyStreak;
     const month = parseKey(k).getMonth() + 1;
     const rand = rng(hash(`v${rs.v}|${i}|${k}|${ds[0].k}`));
@@ -379,15 +434,26 @@ img{max-width:100%}
     return { sp: from[Math.floor(rand() * from.length)], k, lucky, pity, v: rs.v };
   }
   function computeAll(now) {
-    const ds = doses(), total = ds.length;
-    let bloomed = 0; while (BLOOM_AT(bloomed) <= total) bloomed++;
-    const start = bloomed ? BLOOM_AT(bloomed - 1) : 0, need = BLOOM_AT(bloomed) - start, progress = total - start;
-    const blooms = []; for (let i = 0; i < bloomed; i++) blooms.push(bloomAt(i, ds, blooms));
+    const ds = doses(), total = ds.length, firstK = ds.length ? firstUseDay() : null;
+    // 記録を古い順にたどり、その記録時刻に有効なタイミングで咲くかどうかを決める
+    const blooms = [];
+    let start = 0, curStart = firstK, prevStart = null;
+    for (let n = 0; n < total; n++) {
+      const j = blooms.length;
+      if (n - start + 1 >= targetFor(j, ds[n].t, prevStart, curStart, firstK)) {
+        blooms.push(bloomAt(j, ds, n, blooms));
+        prevStart = curStart; curStart = ds[n].k; start = n + 1;
+      }
+    }
+    const bloomed = blooms.length, progress = total - start;
+    let need = targetFor(bloomed, now.toISOString(), prevStart, curStart, firstK);
+    if (need <= progress) need = progress + 1;   // ルール切り替え直後：次の記録で咲く
     let thirst = 0;
-    if (total) { const h = (now - new Date(ds[total - 1].t)) / 36e5; thirst = Math.max(0, Math.min(1, (h - 16) / 20)); }
+    const gapH = 24 / Math.max(1, slotsFor(dayKey(now)).length) + 4;   // 1日の回数に応じた「間が空いた」の目安
+    if (total) { const h = (now - new Date(ds[total - 1].t)) / 36e5; thirst = Math.max(0, Math.min(1, (h - gapH) / 20)); }
     const owned = {}; for (const b of blooms) owned[b.sp.id] = (owned[b.sp.id] || 0) + 1;
     const luckyNow = streakEndingAt(dayKey(addDays(now, -1))) >= rulesetFor(dayKey(now)).luckyStreak;
-    return { total, bloomed, progress, need, thirst, blooms, owned, luckyNow };
+    return { total, bloomed, progress, need, thirst, gapH, blooms, owned, luckyNow };
   }
   // @logic-end
 
@@ -489,7 +555,7 @@ img{max-width:100%}
   const setSync = (msg, warn) => { sync.textContent = msg; sync.classList.toggle("warn", !!warn); };
   function loadLocal() {
     try { const v = JSON.parse(localStorage.getItem(LS_KEY) || "null");
-      if (v) { Object.assign(state.settings, v.settings || {}); state.days = v.days || {}; } } catch (_) {}
+      if (v) { state.settings = normalizeSettings(v.settings || {}); state.days = v.days || {}; } } catch (_) {}
   }
   function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (_) {} }
   async function initStore() {
@@ -504,8 +570,8 @@ img{max-width:100%}
       const days = {};
       for (const d of snap.docs) {
         const v = d.data() || {};
-        if (d.id === "settings") Object.assign(state.settings, v);
-        else days[d.id] = { am: v.am ?? null, pm: v.pm ?? null };
+        if (d.id === "settings") state.settings = normalizeSettings(v);
+        else { const rec = {}; for (const [f, t] of Object.entries(v)) if (t === null || typeof t === "string") rec[f] = t; days[d.id] = rec; }
       }
       state.days = days; saveLocal();
       setSync(snap.metadata && snap.metadata.hasPendingWrites ? "保存中…" : "アカウントに保存済み・他の端末と同期します");
@@ -515,30 +581,39 @@ img{max-width:100%}
   async function persistDay(key) {
     saveLocal(); if (!col) return;
     const v = state.days[key];
-    try { await col.doc(key).set({ am: v.am, pm: v.pm }); }
+    try { await col.doc(key).set({ ...v }); }
     catch (e) { setSync(`保存に失敗しました（${e && e.code || "unknown"}）。もう一度タップしてください`, true); }
   }
   async function persistSettings() {
     saveLocal(); if (!col) return;
-    try { await col.doc("settings").set({ am: state.settings.am, pm: state.settings.pm }); } catch (_) {}
+    try { await col.doc("settings").set({ schedules: state.settings.schedules }); } catch (_) {}
   }
 
   // ---- 描画 ----
-  function slotStatus(key, slot, now) {
-    if (state.days[key] && state.days[key][slot]) return "taken";
+  // 予定ごとの状態。今日は「次の予定との中間」で区切り、区切りを過ぎたら主役を次の予定に移す
+  function slotStatus(key, slot, slots, now) {
+    if (state.days[key] && state.days[key][slot.id]) return "taken";
     const today = dayKey(now);
-    if (key < today) return firstDayKey() && key >= firstDayKey() ? "missed" : "before";   // 使い始める前の日は飲み忘れ扱いしない
+    const firstK = firstUseDay();
+    if (key < today) {
+      if (!firstK || key < firstK) return "before";   // 使い始める前の日は飲み忘れ扱いしない
+      if (key === firstK) {                              // 使い始めた日：最初の記録より前の予定は対象外
+        const firstT = Object.values(state.days[key]).filter(Boolean).map(hhmm).sort()[0];
+        if (slot.time < firstT) return "before";
+      }
+      return "missed";
+    }
     if (key > today) return "future";
-    // 1日を朝と夜の中間で区切る。区切りを過ぎたら主役は夜に移る（朝はまだでも「今日中ならOK」）
     const nowMin = now.getHours() * 60 + now.getMinutes();
-    const am = toMin(state.settings.am), pm = toMin(state.settings.pm);
-    const split = pm > am ? Math.round((am + pm) / 2) : 15 * 60;
-    if (slot === "am") return nowMin < am ? "pending" : nowMin < split ? "due" : "late";
-    return nowMin >= pm ? "due" : nowMin >= split ? "next" : "pending";
+    const split = i => i + 1 < slots.length ? Math.round((toMin(slots[i].time) + toMin(slots[i + 1].time)) / 2) : 24 * 60;
+    const i = slots.findIndex(x => x.id === slot.id);
+    if (nowMin < toMin(slot.time)) return i > 0 && nowMin >= split(i - 1) ? "next" : "pending";
+    return nowMin < split(i) ? "due" : "late";
   }
-  const firstDayKey = () => Object.keys(state.days).filter(k => state.days[k].am || state.days[k].pm).sort()[0];
+  const SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g></svg>';
+  const MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/><circle cx="21" cy="9" r=".8" fill="currentColor"/></svg>';
   const $ = id => document.getElementById(id);
-  let plantSig = "", filter = 0;
+  let plantSig = "", boxSig = "", schedSig = "", filter = 0;
 
   function render() {
     const now = new Date(), key = dayKey(now), A = computeAll(now);
@@ -551,24 +626,35 @@ img{max-width:100%}
     if (sig !== plantSig) { $("plant").innerHTML = plantSVG(p, A.thirst); plantSig = sig; }
     const stage = p === 0 ? "種" : p < 4 ? "芽" : p < 9 ? "若葉" : p < 12 ? "つぼみ" : "もうすぐ開花";
     $("plant").setAttribute("aria-label", `育てている植物：${stage}`);
-    $("mood").textContent = A.total === 0 ? "まだ記録がありません" : A.thirst > 0 ? "最後の記録から16時間以上たっています" : "";
+    $("mood").textContent = A.total === 0 ? "まだ記録がありません" : A.thirst > 0 ? `最後の記録から${Math.floor(A.gapH)}時間以上たっています` : "";
     const gauge = $("gauge"); gauge.replaceChildren();
     for (let i = 0; i < A.need; i++) { const t = document.createElement("i"); if (i < A.progress) t.className = "on"; gauge.append(t); }
     $("grow").textContent = `次の開花まであと${A.need - A.progress}回`;
     $("luck").hidden = !A.luckyNow;
 
-    // slots
-    for (const sl of ["am", "pm"]) {
-      const st = slotStatus(key, sl, now), el = $("slot-" + sl);
+    // today's slots
+    const slots = slotsFor(key), box = $("box");
+    const bsig = JSON.stringify(slots);
+    if (bsig !== boxSig) {
+      boxSig = bsig; box.replaceChildren();
+      box.dataset.n = slots.length; box.style.setProperty("--cols", slots.length === 4 ? 2 : slots.length);
+      for (const sl of slots) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "slot"; b.dataset.id = sl.id;
+        b.innerHTML = `<span class="label">${sl.time < "16:00" ? SUN : MOON}<span></span></span><span class="due"></span><span class="state"></span>`;
+        b.querySelector(".label span").textContent = sl.name;
+        box.append(b);
+      }
+    }
+    for (const sl of slots) {
+      const el = box.querySelector(`[data-id="${CSS.escape(sl.id)}"]`), st = slotStatus(key, sl, slots, now);
       el.dataset.status = st;
-      $("due-" + sl).textContent = `目安 ${state.settings[sl]}`;
-      const txt = st === "taken" ? `服用済み　${hhmm(state.days[key][sl])}`
-        : st === "due" ? `未服用（${state.settings[sl]}を過ぎています）`
+      el.querySelector(".due").textContent = `目安 ${sl.time}`;
+      const txt = st === "taken" ? `服用済み　${hhmm(state.days[key][sl.id])}`
+        : st === "due" ? `未服用（${sl.time}を過ぎています）`
         : st === "late" ? "未服用（今日中なら記録できます）" : "未服用";
-      $("state-" + sl).textContent = txt;
-      $("stamp-" + sl).textContent = st === "taken" ? hhmm(state.days[key][sl]) : "";
+      el.querySelector(".state").textContent = txt;
       el.setAttribute("aria-pressed", String(st === "taken"));
-      el.setAttribute("aria-label", `${sl === "am" ? "朝" : "夜"}の薬：${txt}${st === "taken" ? "（" + hhmm(state.days[key][sl]) + "）" : ""}`);
+      el.setAttribute("aria-label", `${sl.name}の薬：${txt}`);
     }
 
     // garden
@@ -615,14 +701,50 @@ img{max-width:100%}
       const c = document.createElement("div"); c.className = "day" + (i === 0 ? " today" : "");
       const dn = document.createElement("span"); dn.className = "dn"; dn.textContent = `${d.getDate()}${WD[d.getDay()]}`;
       c.append(dn);
-      for (const sl of ["am", "pm"]) {
-        const st = slotStatus(k, sl, now), x = document.createElement("span");
-        x.className = "cell" + (st === "taken" ? " on" : st === "missed" ? " miss" : "");
-        x.title = `${k} ${sl === "am" ? "朝" : "夜"}`; c.append(x);
+      const ss = slotsFor(k);
+      for (const sl of ss) {
+        const st = slotStatus(k, sl, ss, now), x = document.createElement("span");
+        x.className = "cell" + (st === "taken" ? " on" : st === "missed" ? " miss" : st === "before" ? " pre" : "");
+        x.title = `${k} ${sl.name}`; c.append(x);
       }
       week.append(c);
     }
-    $("t-am").value = state.settings.am; $("t-pm").value = state.settings.pm;
+    renderSchedule(key);
+  }
+
+  // 予定の編集（入力中にフォーカスが外れないよう、予定が変わったときだけ作り直す）
+  function renderSchedule(key) {
+    const slots = slotsFor(key), sig = JSON.stringify(slots);
+    if (sig === schedSig) return;
+    schedSig = sig;
+    const wrap = $("sched"); wrap.replaceChildren();
+    for (const sl of slots) {
+      const row = document.createElement("div"); row.className = "sched-row";
+      row.innerHTML = `<label>名前<input type="text" maxlength="6" autocomplete="off"></label><label>時刻<input type="time"></label>`;
+      const [nm, tm] = row.querySelectorAll("input");
+      nm.id = "nm-" + sl.id; nm.value = sl.name; tm.id = "tm-" + sl.id; tm.value = sl.time;
+      nm.addEventListener("change", () => editSlot(sl.id, { name: nm.value.trim() || sl.name }));
+      tm.addEventListener("change", () => { if (tm.value) editSlot(sl.id, { time: tm.value }); });
+      const del = document.createElement("button"); del.type = "button"; del.className = "textbtn sub"; del.textContent = "削除";
+      del.hidden = slots.length <= 1;
+      del.addEventListener("click", () => saveSlots(slotsFor(dayKey(new Date())).filter(x => x.id !== sl.id), `「${sl.name}」を今日から予定から外しました`));
+      row.append(del); wrap.append(row);
+    }
+    if (slots.length < MAX_SLOTS) {
+      const add = document.createElement("button"); add.type = "button"; add.className = "textbtn"; add.textContent = "予定を追加";
+      add.addEventListener("click", () => {
+        const cur = slotsFor(dayKey(new Date())), used = new Set(cur.map(x => x.name));
+        const [name, time] = SLOT_DEFAULTS.find(([n]) => !used.has(n)) || ["追加", "12:00"];
+        saveSlots([...cur, { id: "s" + Date.now().toString(36), name, time }], `「${name}」を今日から追加しました`);
+      });
+      wrap.append(add);
+    }
+  }
+  function editSlot(id, patch) {
+    saveSlots(slotsFor(dayKey(new Date())).map(x => x.id === id ? { ...x, ...patch } : x), "今日から変更しました");
+  }
+  function saveSlots(slots, msg) {
+    if (setTodaySlots(dayKey(new Date()), slots)) { persistSettings(); render(); toast(msg); }
   }
 
   // filters
@@ -656,37 +778,32 @@ img{max-width:100%}
   function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2800); }
 
   // ---- 操作 ----
-  for (const sl of ["am", "pm"]) {
-    $("slot-" + sl).addEventListener("click", () => {
-      const now = new Date(), key = dayKey(now);
-      const before = computeAll(now), beforeStreak = currentStreak(now);
-      const rec = state.days[key] || { am: null, pm: null };
-      rec[sl] = rec[sl] ? null : now.toISOString();
-      state.days[key] = rec;
-      render(); persistDay(key);
-      if (!rec[sl]) { toast("取り消しました"); return; }
-      waterAnim();
-      const after = computeAll(now), afterStreak = currentStreak(now);
-      if (after.bloomed > before.bloomed) {
-        const b = after.blooms[after.bloomed - 1];
-        setTimeout(() => reveal(b, !before.owned[b.sp.id]), 700);
-        return;
-      }
-      const m = MILESTONES.find(([d]) => d === afterStreak && afterStreak > beforeStreak);
-      if (m) toast(`${m[0]}日連続を達成しました`);
-      else if (isDone(key)) toast(`朝・夜とも記録しました。${afterStreak}日連続`);
-      else toast(`記録しました。次の開花まであと${after.need - after.progress}回`);
-    });
-    $("t-" + sl).addEventListener("change", e => {
-      if (!e.target.value) return;
-      state.settings[sl] = e.target.value; render(); persistSettings();
-    });
-  }
+  $("box").addEventListener("click", e => {
+    const btn = e.target.closest(".slot"); if (!btn) return;
+    const id = btn.dataset.id, now = new Date(), key = dayKey(now);
+    const before = computeAll(now), beforeStreak = currentStreak(now);
+    const rec = state.days[key] || {};
+    rec[id] = rec[id] ? null : now.toISOString();
+    state.days[key] = rec;
+    render(); persistDay(key);
+    if (!rec[id]) { toast("取り消しました"); return; }
+    waterAnim();
+    const after = computeAll(now), afterStreak = currentStreak(now);
+    if (after.bloomed > before.bloomed) {
+      const b = after.blooms[after.bloomed - 1];
+      setTimeout(() => reveal(b, !before.owned[b.sp.id]), 700);
+      return;
+    }
+    const m = MILESTONES.find(([d]) => d === afterStreak && afterStreak > beforeStreak);
+    if (m) toast(`${m[0]}日連続を達成しました`);
+    else if (isDone(key)) toast(`今日の予定をすべて記録しました。${afterStreak}日連続`);
+    else toast(`記録しました。次の開花まであと${after.need - after.progress}回`);
+  });
 
   setInterval(() => { if ($("reveal").hidden) render(); }, 30 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
   // ---- バックアップ（書き出し・読み込み） ----
-  const SCHEMA = 1;
+  const SCHEMA = 2;   // 2: 予定（schedules）と任意の予定id。1 も読める
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
   const isIso = v => v === null || (typeof v === "string" && !Number.isNaN(Date.parse(v)));
   $("bk-export").addEventListener("click", () => {
@@ -705,12 +822,15 @@ img{max-width:100%}
     try { data = JSON.parse(await file.text()); } catch (_) { toast("読み込めませんでした。バックアップのファイルを選んでください"); return; }
     if (!data || data.app !== "kusuri" || typeof data.days !== "object") { toast("このアプリのバックアップではありません"); return; }
     if (data.schema > SCHEMA) { toast("新しい版のバックアップです。アプリを更新してから読み込んでください"); return; }
+    // 記録がまだない端末（機種変更など）なら、予定もバックアップのものを使う
+    const fresh = !Object.keys(state.days).length;
+    if (fresh && data.settings) { state.settings = normalizeSettings(data.settings); persistSettings(); }
     let added = 0;
     for (const [k, v] of Object.entries(data.days)) {
-      if (!DAY_RE.test(k) || !v || !isIso(v.am ?? null) || !isIso(v.pm ?? null)) continue;   // 壊れた行は捨てる
-      const cur = state.days[k] || { am: null, pm: null };
-      const merged = { am: cur.am || v.am || null, pm: cur.pm || v.pm || null };          // 既存を優先して足りない分だけ
-      if (merged.am !== cur.am || merged.pm !== cur.pm) { state.days[k] = merged; added++; persistDay(k); }
+      if (!DAY_RE.test(k) || !v || typeof v !== "object" || !Object.values(v).every(isIso)) continue;   // 壊れた行は捨てる
+      const cur = state.days[k] || {}, merged = { ...cur };
+      for (const [f, t] of Object.entries(v)) if (!merged[f] && t) merged[f] = t;            // 既存を優先して足りない分だけ
+      if (JSON.stringify(merged) !== JSON.stringify(cur)) { state.days[k] = merged; added++; persistDay(k); }
     }
     saveLocal(); render();
     toast(added ? `${added}日分の記録を追加しました` : "追加する記録はありませんでした");
