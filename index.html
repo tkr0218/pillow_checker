@@ -87,7 +87,10 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 
 /* Guide */
 .zukan{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 8px}
-.card{display:grid;gap:1px;justify-items:center;text-align:center;min-width:0}
+.card{display:grid;gap:1px;justify-items:center;text-align:center;min-width:0;
+  appearance:none;border:0;background:none;color:inherit;font:inherit;padding:0;cursor:pointer}
+.card:focus-visible,.garden button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+.garden button{appearance:none;border:0;background:none;padding:0;cursor:pointer;display:block}
 .card .no{font-family:var(--f-num);font-size:.6rem;color:var(--dim)}
 .card svg{width:48px;height:48px;display:block}
 .card .nm{font-size:.72rem;font-weight:700;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}
@@ -150,6 +153,11 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .reveal .nm{font-family:var(--f-display);font-weight:800;font-size:1.7rem;line-height:1.3}
 .reveal .stars{font-size:.95rem}
 .reveal .desc{font-size:.84rem;color:var(--muted)}
+.reveal .meta-line{font-family:var(--f-num);font-size:.74rem;color:var(--muted)}
+.reveal .meta-line:empty{display:none}
+.reveal .info{margin:8px 0 0;font-size:.9rem;line-height:1.8;text-align:left;max-width:30em;padding-top:12px;border-top:1px solid var(--line)}
+.reveal .info:empty{display:none}
+.reveal{overflow-y:auto}
 .reveal .desc:empty{display:none}
 .reveal button{margin-top:20px;font:700 .9rem var(--f-body);padding:6px 2px;border:0;border-bottom:1px solid var(--fg);border-radius:0;background:none;color:var(--fg);cursor:pointer}
 .reveal button:focus-visible{outline:2px solid var(--fg);outline-offset:4px}
@@ -204,6 +212,7 @@ img{max-width:100%}
 
   <section aria-labelledby="h-zukan">
     <h2 id="h-zukan">図鑑 <span class="count" id="zukan-n"></span></h2>
+    <p class="hint" style="margin:-8px 0 16px">花をタップすると解説を表示します。</p>
     <div class="filters" id="filters" role="group" aria-label="レア度で絞り込み"></div>
     <div class="zukan" id="zukan"></div>
   </section>
@@ -242,6 +251,8 @@ img{max-width:100%}
     <div id="rv-art"></div>
     <span class="nm" id="rv-name"></span>
     <span class="stars" id="rv-stars"></span>
+    <span class="meta-line" id="rv-meta"></span>
+    <p class="info" id="rv-info"></p>
     <span class="desc" id="rv-desc"></span>
     <button type="button" id="rv-close">閉じる</button>
   </div>
@@ -457,6 +468,34 @@ img{max-width:100%}
   }
   // @logic-end
 
+  // 図鑑の解説。科・咲く時期・特徴。にじいろの花はこのアプリだけの架空の花
+  const INFO = {
+    tanpopo:    ["キク科", "3〜5月", "1つの花に見える部分は、小さな花が100以上集まったもの。花のあとは綿毛になり、種が風で運ばれる。"],
+    shirotsume: ["マメ科", "5〜8月", "クローバーとも呼ばれる。江戸時代、オランダから運ばれたガラス器の詰め物に使われていたことが名前の由来。"],
+    sumire:     ["スミレ科", "3〜5月", "花の後ろに「距（きょ）」という袋状の突き出た部分があり、ここに蜜をためる。道ばたや石垣のすき間にも生える。"],
+    margaret:   ["キク科", "3〜5月", "大西洋のカナリア諸島が原産。白い花びらと黄色い中心の組み合わせで、花占いによく使われる。"],
+    cosmos:     ["キク科", "9〜10月", "メキシコ原産。漢字では「秋桜」と書く。明治時代に日本に入り、各地の休耕地や河川敷で栽培されている。"],
+    poppy:      ["ケシ科", "4〜6月", "和名はヒナゲシ。薄い紙のような花びらが特徴。つぼみは下を向き、咲くときに上を向く。"],
+    himawari:   ["キク科", "7〜9月", "北アメリカ原産。若いつぼみは日中に太陽の方向を追って動くが、花が咲いたあとはほぼ東を向いたまま止まる。"],
+    pansy:      ["スミレ科", "11〜5月", "19世紀のヨーロッパで、野生のスミレ類をかけ合わせて作られた。冬の花壇に植えられることが多い。"],
+    nemophila:  ["ムラサキ科", "4〜5月", "北アメリカ原産。和名はルリカラクサ。茨城県の国営ひたち海浜公園では、丘一面に植えられている。"],
+    asagao:     ["ヒルガオ科", "7〜9月", "朝に開いて昼前にしぼむ。奈良時代ごろに、種を薬として使うために中国から伝わったとされる。"],
+    tulip:      ["ユリ科", "3〜5月", "中央アジアからトルコにかけてが原産。17世紀のオランダでは、球根が非常に高い値段で取引された。"],
+    gerbera:    ["キク科", "4〜6月、9〜11月", "南アフリカ原産。色の種類が多く、切り花として長くもつため、花束によく使われる。"],
+    kikyou:     ["キキョウ科", "6〜9月", "秋の七草の一つ。つぼみは紙風船のようにふくらみ、それが割れるように5枚の花びらが開く。"],
+    anemone:    ["キンポウゲ科", "2〜5月", "地中海沿岸が原産。花びらに見える部分は、実際には萼（がく）。"],
+    dahlia:     ["キク科", "6〜11月", "メキシコ原産で、メキシコの国花。品種は数万にのぼり、花の大きさは数cmから30cm近くまである。"],
+    sakura:     ["バラ科", "3〜4月", "よく見かけるソメイヨシノは江戸時代末期に作られた品種で、種からではなく接ぎ木で増やされている。"],
+    ajisai:     ["アジサイ科", "6〜7月", "色の付いた部分は花ではなく萼（がく）。土が酸性だと青く、中性からアルカリ性だと赤みが強くなる。"],
+    higanbana:  ["ヒガンバナ科", "9月", "秋の彼岸の頃に咲く。花が終わってから葉が出るため、花と葉が同時に見られない。球根には毒がある。"],
+    ume:        ["バラ科", "1〜3月", "奈良時代に中国から伝わった。万葉集では、桜よりも多く詠まれている。"],
+    yuri:       ["ユリ科", "6〜8月", "日本には十数種の野生のユリがある。ヤマユリなど日本のユリは、19世紀にヨーロッパへ球根が多く輸出された。"],
+    suiren:     ["スイレン科", "6〜9月", "水面に葉と花を浮かべる。日本で多く見られる温帯性の種類は、朝に開き夕方に閉じる。"],
+    bluerose:   ["バラ科", "5〜6月、10〜11月", "バラには青い色素を作る遺伝子がないため、青いバラは長く「不可能」のたとえとされた。遺伝子組換えで青い色素を持つバラが日本で開発され、2009年に販売が始まった。"],
+    niji:       ["架空の花", "", "このアプリだけに登場する、実在しない花。"],
+    gekka:      ["サボテン科", "6〜11月", "メキシコから中南米が原産。夜に咲き始め、強い香りを出して、数時間でしぼむ。一晩しか咲かない。"],
+  };
+
   // ---- 花の描画 ----
   function petals(sp, cx, cy, R, uid) {
     const { shape, n, c } = sp; let g = "";
@@ -664,7 +703,7 @@ img{max-width:100%}
     else {
       const SHOW = 30, start = Math.max(0, A.bloomed - SHOW);
       if (start) { const m = document.createElement("span"); m.className = "more"; m.textContent = `+${start}`; gd.append(m); }
-      for (let i = start; i < A.bloomed; i++) { const w = document.createElement("span"); w.title = A.blooms[i].sp.nm; w.innerHTML = miniFlower(A.blooms[i].sp); gd.append(w); }
+      for (let i = start; i < A.bloomed; i++) { const w = document.createElement("button"); w.type = "button"; w.dataset.sp = A.blooms[i].sp.id; w.setAttribute("aria-label", `${A.blooms[i].sp.nm}の解説`); w.title = A.blooms[i].sp.nm; w.innerHTML = miniFlower(A.blooms[i].sp); gd.append(w); }
     }
 
     // zukan
@@ -674,7 +713,7 @@ img{max-width:100%}
     for (const sp of SPECIES) {
       if (filter && sp.r !== filter) continue;
       const got = A.owned[sp.id] || 0;
-      const c = document.createElement("div"); c.className = `card r${sp.r}` + (got ? "" : " locked");
+      const c = document.createElement("button"); c.type = "button"; c.dataset.sp = sp.id; c.className = `card r${sp.r}` + (got ? "" : " locked");
       c.innerHTML = flowerIcon(sp, !got);
       const no = document.createElement("span"); no.className = "no"; no.textContent = "No." + String(SPECIES.indexOf(sp) + 1).padStart(2, "0"); c.prepend(no);
       const nm = document.createElement("span"); nm.className = "nm";
@@ -767,8 +806,33 @@ img{max-width:100%}
     $("rv-desc").textContent = (b.sp.months ? `${b.sp.months.join("・")}月にだけ出る種類です。` : "")
       + (b.pity ? "★3以上が8本続けて出なかったため、★3以上になりました。" : b.lucky ? "3日以上連続していたため、★3・★4が出やすい状態でした。" : "");
     $("rv-new").hidden = !isNew;
+    fillInfo(b.sp, true);
     $("reveal").hidden = false; $("rv-close").focus();
   }
+  function fillInfo(sp, known) {
+    const inf = INFO[sp.id] || ["", "", ""];
+    $("rv-meta").textContent = known ? [inf[0], inf[1] && `花の時期 ${inf[1]}`].filter(Boolean).join("　") : "";
+    $("rv-info").textContent = known ? inf[2] : "";
+  }
+  // 図鑑・咲いた花をタップしたときの解説
+  function showDetail(id) {
+    const sp = SPECIES.find(x => x.id === id); if (!sp) return;
+    const A = computeAll(new Date()), mine = A.blooms.filter(b => b.sp.id === id), got = mine.length > 0;
+    lastFocus = document.activeElement;
+    $("rv-no").textContent = "No." + String(SPECIES.indexOf(sp) + 1).padStart(2, "0");
+    $("rv-new").hidden = true;
+    $("rv-art").innerHTML = flowerIcon(sp, !got);
+    $("rv-name").textContent = got ? sp.nm : "未発見";
+    $("rv-stars").textContent = starStr(sp.r); $("rv-stars").className = "stars" + (sp.r === 4 ? " r4" : "");
+    fillInfo(sp, got);
+    const fmt = k => { const [y, m, d] = k.split("-").map(Number); return `${y}年${m}月${d}日`; };
+    $("rv-desc").textContent = got
+      ? `${mine.length}本咲きました。最初に咲いた日：${fmt(mine[0].k)}`
+      : "まだ咲いていません。" + (sp.months ? `${sp.months.join("・")}月にだけ出る種類です。` : "");
+    $("reveal").hidden = false; $("rv-close").focus();
+  }
+  $("zukan").addEventListener("click", e => { const b = e.target.closest("[data-sp]"); if (b) showDetail(b.dataset.sp); });
+  $("garden").addEventListener("click", e => { const b = e.target.closest("[data-sp]"); if (b) showDetail(b.dataset.sp); });
   function closeReveal() { $("reveal").hidden = true; if (lastFocus) lastFocus.focus(); }
   $("rv-close").addEventListener("click", closeReveal);
   $("reveal").addEventListener("click", e => { if (e.target.id === "reveal") closeReveal(); });
