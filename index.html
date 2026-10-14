@@ -103,6 +103,12 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .filters button[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--fg)}
 .filters button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 
+/* Totals */
+.stats{display:grid;grid-template-columns:minmax(0,1fr) auto;margin:0}
+.stats dt,.stats dd{margin:0;padding-block:10px;border-bottom:1px solid var(--line)}
+.stats dt{font-size:.85rem;color:var(--muted)}
+.stats dd{font-family:var(--f-num);font-size:.95rem;text-align:right;font-variant-numeric:tabular-nums}
+.stats dt:last-of-type,.stats dd:last-of-type{border-bottom:0}
 /* Streak milestones */
 .badges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 8px}
 .badge{display:grid;gap:0}
@@ -215,6 +221,11 @@ img{max-width:100%}
     <p class="hint" style="margin:-8px 0 16px">花をタップすると解説を表示します。</p>
     <div class="filters" id="filters" role="group" aria-label="レア度で絞り込み"></div>
     <div class="zukan" id="zukan"></div>
+  </section>
+
+  <section aria-labelledby="h-stats">
+    <h2 id="h-stats">これまでの記録</h2>
+    <dl class="stats" id="stats"></dl>
   </section>
 
   <section aria-labelledby="h-badge">
@@ -722,6 +733,23 @@ img{max-width:100%}
       const n = document.createElement("span"); n.className = "n"; n.textContent = got ? `${got}本` : "";
       c.append(nm, st, n); zk.append(c);
     }
+
+    // totals
+    const fmtDay = k => { const [y, m, d] = k.split("-").map(Number); return `${y}年${m}月${d}日`; };
+    const usedDays = Object.keys(state.days).filter(k => Object.values(state.days[k]).some(Boolean));
+    const doneDays = usedDays.filter(isDone).length;
+    const cnt = {}; for (const b of A.blooms) cnt[b.sp.id] = (cnt[b.sp.id] || 0) + 1;
+    let top = null; for (const b of A.blooms) if (!top || cnt[b.sp.id] > cnt[top.id]) top = b.sp;   // 同数なら先に咲いた方
+    const rows = [
+      ["記録した回数", `${A.total}回`],
+      ["予定を全部飲めた日", `${doneDays}日`],
+      ["最長連続", `${Math.max(bestStreak(), currentStreak(now))}日`],
+      ["咲いた花", `${A.bloomed}本（${Object.keys(A.owned).length}種類）`],
+      ["一番多く咲いた花", top ? `${top.nm}　${cnt[top.id]}本` : "なし"],
+      ["使い始めた日", usedDays.length ? fmtDay(usedDays.sort()[0]) : "なし"],
+    ];
+    const dl = $("stats"); dl.replaceChildren();
+    for (const [k, v] of rows) { const dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
 
     // badges
     const best = Math.max(bestStreak(), currentStreak(now));
