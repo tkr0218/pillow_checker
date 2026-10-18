@@ -1,0 +1,60 @@
+name: test-and-deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 花の抽選ロジック
+        run: TZ=Asia/Tokyo node test_blooms.mjs
+      - name: 通知サーバー
+        run: node --test 'server/test/*.test.mjs'
+      - name: AWS テンプレートの検査
+        run: |
+          pip install --quiet cfn-lint
+          cfn-lint server/template.yaml server/bootstrap.yaml
+
+  # 通知サーバーのデプロイ。リポジトリ変数 AWS_ROLE_ARN を設定するまでは実行しない
+  deploy-notify:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency: deploy-notify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - name: sam deploy
+        env:
+          NOTIFY_PASSPHRASE: ${{ secrets.NOTIFY_PASSPHRASE }}
+        run: |
+          sam deploy \
+            --template-file server/template.yaml \
+            --stack-name hana-notify \
+            --s3-bucket "${{ vars.AWS_ARTIFACT_BUCKET }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "NotifyPassphrase=${NOTIFY_PASSPHRASE}"
+      - name: 通知サーバーの URL
+        run: aws cloudformation describe-stacks --stack-name hana-notify --query "Stacks[0].Outputs" --output table

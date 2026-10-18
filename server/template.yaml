@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: 花あつめ 通知サーバー（Web Push）
+
+Parameters:
+  NotifyPassphrase:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: 通知の登録に使う合言葉（GitHub の Secrets から渡す）
+  AllowedOrigin:
+    Type: String
+    Default: https://tkr0218.github.io
+  VapidSubject:
+    Type: String
+    Default: https://tkr0218.github.io/pillow_checker/
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 256
+    CodeUri: src/
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref Table
+        VAPID_SUBJECT: !Ref VapidSubject
+
+Resources:
+  # 端末ごとの購読・予定・服用状態と VAPID 鍵。プロビジョンド 2/2 は DynamoDB の無料枠（25/25）に収まる
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: hana-notify
+      AttributeDefinitions: [{ AttributeName: pk, AttributeType: S }]
+      KeySchema: [{ AttributeName: pk, KeyType: HASH }]
+      BillingMode: PROVISIONED
+      ProvisionedThroughput: { ReadCapacityUnits: 2, WriteCapacityUnits: 2 }
+      SSESpecification: { SSEEnabled: true }
+
+  ApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: /aws/lambda/hana-notify-api, RetentionInDays: 7 }
+  TickLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: /aws/lambda/hana-notify-tick, RetentionInDays: 7 }
+
+  # アプリから呼ぶ API（登録・状態更新・テスト通知・解除）
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ApiLogs
+    Properties:
+      FunctionName: hana-notify-api
+      Handler: handlers.api
+      Timeout: 10
+      Environment:
+        Variables:
+          NOTIFY_PASSPHRASE: !Ref NotifyPassphrase
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins: [!Ref AllowedOrigin]
+          AllowMethods: [GET, POST]
+          AllowHeaders: [content-type]
+          MaxAge: 3600
+
+  # 1分ごとに予定を確認して通知を送る
+  TickFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: TickLogs
+    Properties:
+      FunctionName: hana-notify-tick
+      Handler: handlers.tick
+      Timeout: 50
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+      Events:
+        EveryMinute:
+          Type: ScheduleV2
+          Properties:
+            Name: hana-notify-tick
+            ScheduleExpression: rate(1 minute)
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+
+Outputs:
+  ApiUrl:
+    Description: アプリに設定する通知サーバーの URL
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl

@@ -1,7 +1,8 @@
 # 花あつめ（PWA版）
 
 1日1〜4回の服用を記録し、記録の回数に応じて咲く花を図鑑に集めるアプリ。
-サーバー不要・オフラインで動く PWA。記録は使っている端末の中（localStorage）にだけ保存され、外部には送信されない。
+オフラインで動く PWA。記録は使っている端末の中（localStorage）に保存される。
+通知を有効にした端末だけ、予定（名前・時刻）と、今日と前日にどの予定を記録したかを通知サーバー（AWS）に送る。飲んだ時刻と花の記録は送らない。
 
 https://tkr0218.github.io/pillow_checker/
 
@@ -82,3 +83,34 @@ EventBridge Scheduler（朝・夜）────┘──▶ Lambda が web-push
 
 - 飲んだかどうかをサーバーも知っていれば「まだ飲んでいない人にだけ」通知できる
 - この規模ならほぼ無料枠に収まる見込み。**最初に AWS Budgets で月1ドルの予算アラートを設定**してから始める
+
+## 通知（Web Push）
+
+予定の時刻に、まだ記録していない予定だけを通知する。30分たっても記録がなければもう一度通知する。
+通知サーバーは AWS（Lambda・EventBridge Scheduler・DynamoDB）で動き、GitHub Actions からデプロイする。登録には合言葉が必要。
+
+```
+スマホ(PWA) ──登録・予定・服用状態──▶ Lambda（関数URL） ──▶ DynamoDB
+EventBridge Scheduler（1分ごと）──▶ Lambda ──▶ Web Push ──▶ スマホ
+```
+
+| ファイル | 役割 |
+|---|---|
+| `server/src/` | 通知サーバー。Web Push の暗号化も Node 標準の crypto で実装し、外部ライブラリを使わない |
+| `server/test/` | サーバーと `sw.js` の通知処理のテスト（RFC 8291 の例との照合を含む） |
+| `server/template.yaml` | 通知サーバーの AWS 構成（SAM） |
+| `server/bootstrap.yaml` | 初回だけ使う。GitHub Actions 用の OIDC・デプロイ用ロール・成果物バケット |
+| `.github/workflows/test-and-deploy.yml` | push のたびにテストを実行し、main なら通知サーバーをデプロイ |
+
+### 初回の準備
+
+1. AWS Budgets で月1ドルの予算アラートを作る
+2. 東京リージョン（ap-northeast-1）の CloudFormation で `server/bootstrap.yaml` からスタックを作る（スタック名は `hana-notify-bootstrap`）
+3. GitHub の Settings → Secrets and variables → Actions で次を設定する
+   - Variables: `AWS_ROLE_ARN`、`AWS_ARTIFACT_BUCKET`（bootstrap スタックの出力の値）
+   - Secrets: `NOTIFY_PASSPHRASE`（8文字以上、空白なし）
+4. Actions から `test-and-deploy` を実行する。出力の `ApiUrl` を `index.html` の `NOTIFY_URL` に設定して push する
+
+### 費用
+
+1分ごとの起動は月約4.3万回で、Lambda・EventBridge Scheduler の無料枠内。DynamoDB はプロビジョンド 2/2 で無料枠内。ログは7日で削除する。

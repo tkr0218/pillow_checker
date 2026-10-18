@@ -141,6 +141,14 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .textbtn{font:700 .82rem var(--f-body);padding:4px 0;border:0;border-bottom:1px solid currentColor;border-radius:0;background:none;color:var(--fg);cursor:pointer;justify-self:start}
 .textbtn.sub{color:var(--muted);font-weight:400}
 .textbtn:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+/* Notifications */
+.notify-status{margin:0 0 14px;font-size:.9rem}
+.notify-status.warn{color:var(--warn)}
+.notify-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;margin-bottom:14px}
+.notify-form label{display:grid;gap:2px;font-size:.72rem;color:var(--muted);min-width:0}
+.notify-form input{font:400 1.05rem var(--f-body);padding:4px 0;border:0;border-bottom:1px solid var(--line-2);border-radius:0;background:transparent;color:var(--fg);width:100%;min-width:0}
+.notify-form input:focus-visible{outline:none;border-bottom-color:var(--fg)}
+#notify-actions{margin-bottom:6px}
 /* Settings */
 .settings{display:flex;gap:28px;flex-wrap:wrap}
 .settings label{display:grid;gap:2px;font-size:.78rem;color:var(--muted)}
@@ -244,6 +252,21 @@ img{max-width:100%}
     <div class="sched" id="sched"></div>
     <p class="hint">1日1〜4回まで設定できます。変更は今日から適用され、昨日までの記録の判定は変わりません。目安の時刻を過ぎると表示が変わります。その日のうちであれば、時刻に関係なく記録できます。</p>
     <p class="sync" id="sync">読み込み中…</p>
+  </section>
+
+  <section aria-labelledby="h-notify" id="notify-sec" hidden>
+    <h2 id="h-notify">通知</h2>
+    <p class="notify-status" id="notify-status"></p>
+    <div class="notify-form" id="notify-form" hidden>
+      <label for="notify-pass">合言葉<input type="password" id="notify-pass" autocomplete="off"></label>
+      <button type="button" class="textbtn" id="notify-on">この端末で通知を受け取る</button>
+    </div>
+    <div class="backup" id="notify-actions" hidden>
+      <button type="button" id="notify-test">テスト通知を送る</button>
+      <button type="button" id="notify-off">通知を止める</button>
+    </div>
+    <p class="hint">予定の時刻になると、まだ記録していない予定だけを通知します。30分たっても記録がなければ、もう一度通知します。通知の「飲んだので記録する」を押すと、アプリを開いて記録します。</p>
+    <p class="hint">通知を使うと、予定の名前と時刻、今日と前日にどの予定を記録したかが、通知を送るサーバー（AWS）に保存されます。飲んだ時刻と花の記録は送りません。登録には合言葉が必要です。</p>
   </section>
 
   <section aria-labelledby="h-backup">
@@ -811,7 +834,7 @@ img{max-width:100%}
     saveSlots(slotsFor(dayKey(new Date())).map(x => x.id === id ? { ...x, ...patch } : x), "今日から変更しました");
   }
   function saveSlots(slots, msg) {
-    if (setTodaySlots(dayKey(new Date()), slots)) { persistSettings(); render(); toast(msg); }
+    if (setTodaySlots(dayKey(new Date()), slots)) { persistSettings(); render(); toast(msg); notify.sync(); }
   }
 
   // filters
@@ -871,13 +894,18 @@ img{max-width:100%}
 
   // ---- 操作 ----
   $("box").addEventListener("click", e => {
-    const btn = e.target.closest(".slot"); if (!btn) return;
-    const id = btn.dataset.id, now = new Date(), key = dayKey(now);
-    const before = computeAll(now), beforeStreak = currentStreak(now);
+    const btn = e.target.closest(".slot"); if (btn) toggleSlot(btn.dataset.id);
+  });
+  // 記録する／取り消す。onlyTake が true なら、記録済みのときは何もしない（通知から開いたとき用）
+  function toggleSlot(id, onlyTake = false) {
+    const now = new Date(), key = dayKey(now);
+    if (!slotsFor(key).some(s => s.id === id)) return;
     const rec = state.days[key] || {};
+    if (onlyTake && rec[id]) { toast("この予定はもう記録されています"); return; }
+    const before = computeAll(now), beforeStreak = currentStreak(now);
     rec[id] = rec[id] ? null : now.toISOString();
     state.days[key] = rec;
-    render(); persistDay(key);
+    render(); persistDay(key); notify.sync();
     if (!rec[id]) { toast("取り消しました"); return; }
     waterAnim();
     const after = computeAll(now), afterStreak = currentStreak(now);
@@ -890,10 +918,111 @@ img{max-width:100%}
     if (m) toast(`${m[0]}日連続を達成しました`);
     else if (isDone(key)) toast(`今日の予定をすべて記録しました。${afterStreak}日連続`);
     else toast(`記録しました。次の開花まであと${after.need - after.progress}回`);
-  });
+  }
 
   setInterval(() => { if ($("reveal").hidden) render(); }, 30 * 1000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+  // ---- 通知 ----
+  // 通知サーバーの URL（デプロイ後に設定する）。空のあいだは通知の設定を表示しない
+  const NOTIFY_URL = "";
+  const NOTIFY_KEY = "kusuri.notify.v1";   // 記録とは別に保存する（端末の登録情報）
+  const notify = (() => {
+    const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const load = () => { try { return JSON.parse(localStorage.getItem(NOTIFY_KEY) || "null"); } catch (_) { return null; } };
+    const save = v => { try { v ? localStorage.setItem(NOTIFY_KEY, JSON.stringify(v)) : localStorage.removeItem(NOTIFY_KEY); } catch (_) {} };
+    const api = async (path, body) => {
+      const r = await fetch(new URL(path, NOTIFY_URL), body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { const e = new Error(data.error || `HTTP ${r.status}`); e.status = r.status; throw e; }
+      return data;
+    };
+    const b64 = s => { const p = s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4); return Uint8Array.from(atob(p), c => c.charCodeAt(0)); };
+    function payload() {
+      const now = new Date(), today = dayKey(now), taken = {};
+      for (const k of [today, dayKey(addDays(now, -1))]) {
+        const rec = state.days[k] || {};
+        taken[k] = Object.keys(rec).filter(id => rec[id]);
+      }
+      return { tz: Intl.DateTimeFormat().resolvedOptions().timeZone, slots: slotsFor(today).map(({ id, name, time }) => ({ id, name, time })), taken };
+    }
+    function show(msg, warn) { $("notify-status").textContent = msg; $("notify-status").classList.toggle("warn", !!warn); }
+    async function refresh() {
+      if (!NOTIFY_URL) return;
+      $("notify-sec").hidden = false;
+      const reg = load();
+      if (!supported) { show("このブラウザは通知に対応していません。", true); $("notify-form").hidden = $("notify-actions").hidden = true; return; }
+      let sub = null; try { sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription(); } catch (_) {}
+      if (reg && !sub) { save(null); show("通知の登録が解除されていました。もう一度登録してください。", true); }
+      else if (reg) show("この端末で通知を受け取っています。");
+      else if (Notification.permission === "denied") show("通知がブロックされています。Chrome のサイト設定で、このアプリの通知を許可してください。", true);
+      else show("この端末では通知を受け取っていません。");
+      const on = !!(reg && sub);
+      $("notify-form").hidden = on; $("notify-actions").hidden = !on;
+    }
+    async function enable() {
+      const pass = $("notify-pass").value;
+      if (!pass) { show("合言葉を入力してください。", true); return; }
+      if (await Notification.requestPermission() !== "granted") { show("通知が許可されませんでした。Chrome のサイト設定で許可してください。", true); return; }
+      show("登録しています…");
+      try {
+        const { publicKey } = await api("vapid");
+        const pm = (await navigator.serviceWorker.ready).pushManager;
+        let sub = await pm.getSubscription();
+        if (sub) await sub.unsubscribe();   // 別の鍵で作られた購読が残っていると登録できないため、作り直す
+        sub = await pm.subscribe({ userVisibleOnly: true, applicationServerKey: b64(publicKey) });
+        const r = await api("subscribe", { passphrase: pass, subscription: sub.toJSON(), ...payload() });
+        save({ deviceId: r.deviceId, token: r.token, dirty: false });
+        $("notify-pass").value = "";
+        toast("通知を受け取る設定にしました");
+      } catch (e) {
+        show(e.status === 403 ? "合言葉が違います。" : `登録できませんでした（${e.message}）。`, true);
+        return;
+      }
+      refresh();
+    }
+    async function disable() {
+      const reg = load();
+      try { if (reg) await api("unsubscribe", { deviceId: reg.deviceId, token: reg.token }); } catch (_) {}
+      try { const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (_) {}
+      save(null); toast("通知を止めました"); refresh();
+    }
+    async function test() {
+      const reg = load(); if (!reg) return;
+      try { await api("test", { deviceId: reg.deviceId, token: reg.token }); toast("テスト通知を送りました"); }
+      catch (e) { if (e.status === 401) { save(null); refresh(); } toast(`送れませんでした（${e.message}）`); }
+    }
+    // 予定・服用状態をサーバーに送る。失敗したら次に開いたときに送り直す
+    let timer = null, lastSync = 0;
+    function sync(force = true) {
+      const reg = load(); if (!NOTIFY_URL || !reg) return;
+      if (!force && !reg.dirty && Date.now() - lastSync < 5 * 60 * 1000) return;
+      save({ ...reg, dirty: true });
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          await api("state", { deviceId: reg.deviceId, token: reg.token, ...payload() });
+          lastSync = Date.now(); const cur = load(); if (cur) save({ ...cur, dirty: false });
+        } catch (e) { if (e.status === 401) { save(null); refresh(); } }
+      }, 800);
+    }
+    if (NOTIFY_URL) {
+      $("notify-on").addEventListener("click", enable);
+      $("notify-off").addEventListener("click", disable);
+      $("notify-test").addEventListener("click", test);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) sync(false); });
+      window.addEventListener("online", () => sync(false));
+      // アプリを開いているときに通知の「飲んだので記録する」が押された
+      if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => {
+        if (e.data && e.data.type === "take") takeFromNotification(e.data.slotId, e.data.date);
+      });
+    }
+    return { refresh, sync };
+  })();
+  function takeFromNotification(slotId, date) {
+    if (date !== dayKey(new Date())) { toast("前日の予定は、通知から記録できません"); return; }
+    toggleSlot(slotId, true);
+  }
+
   // ---- バックアップ（書き出し・読み込み） ----
   const SCHEMA = 2;   // 2: 予定（schedules）と任意の予定id。1 も読める
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -931,6 +1060,14 @@ img{max-width:100%}
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   initStore();
+  notify.refresh(); notify.sync(false);
+  // 通知の「飲んだので記録する」から開かれた（?take=予定&date=日付）
+  (() => {
+    const q = new URLSearchParams(location.search), id = q.get("take"), date = q.get("date");
+    if (!id) return;
+    history.replaceState(null, "", location.pathname);
+    takeFromNotification(id, date);
+  })();
 })();
 </script>
 <script>

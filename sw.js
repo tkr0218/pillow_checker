@@ -1,6 +1,6 @@
 // 花あつめ Service Worker
 // アプリを更新したら VERSION を上げる（古いキャッシュが消え、新しいファイルが入る）
-const VERSION = "2026-10-14.3";
+const VERSION = "2026-10-18.1";
 const CACHE = `kusuri-${VERSION}`;
 const FONT_CACHE = "kusuri-fonts";   // フォントは版をまたいで使い回す
 const SHELL = [
@@ -59,4 +59,37 @@ self.addEventListener("fetch", e => {
   if (url.origin === self.location.origin) {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
   }
+});
+
+// ---- 通知 ----
+// サーバーから届いた通知を表示する。同じ予定の通知は tag で1つにまとめる（再通知は前の通知を置き換える）
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) {}
+  e.waitUntil(self.registration.showNotification(d.title || "花あつめ", {
+    body: d.body || "",
+    tag: d.tag || "hana",
+    renotify: true,
+    icon: "icons/icon-192.png",
+    data: { slotId: d.slotId || null, date: d.date || null },
+    actions: d.slotId ? [{ action: "take", title: "飲んだので記録する" }] : [],
+  }));
+});
+
+// 通知を押したらアプリを開く。「飲んだので記録する」なら、その予定を記録する
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const { slotId, date } = e.notification.data || {};
+  const take = e.action === "take" && slotId;
+  const url = new URL(take ? `./?take=${encodeURIComponent(slotId)}&date=${encodeURIComponent(date)}` : "./", self.registration.scope).href;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const w = wins.find(c => c.url.startsWith(self.registration.scope));
+    if (w) {
+      await w.focus();
+      if (take) w.postMessage({ type: "take", slotId, date });
+      return;
+    }
+    await self.clients.openWindow(url);
+  })());
 });
