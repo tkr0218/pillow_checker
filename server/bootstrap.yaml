@@ -4,10 +4,13 @@ Description: >-
   デプロイ専用ロール、SAM の成果物を置く S3 バケットを作る。AWS コンソールの CloudFormation から一度だけ作成する。
 
 Parameters:
-  GitHubRepo:
+  GitHubSubject:
     Type: String
-    Default: tkr0218/pillow_checker
-    Description: デプロイを許可するリポジトリ（owner/name）。main ブランチからだけ許可する
+    Default: repo:tkr0218@43717504/pillow_checker@1413000035
+    Description: >-
+      デプロイを許可するリポジトリ。GitHub の OIDC トークンの sub の形式で書く。
+      2026年7月15日以降に作られたリポジトリは「repo:所有者@所有者ID/リポジトリ@リポジトリID」。
+      ID は名前と違って変わらないので、同じ名前のリポジトリを他人が作っても入れない。main ブランチからだけ許可する
   CreateOidcProvider:
     Type: String
     AllowedValues: ["true", "false"]
@@ -49,7 +52,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepo}:ref:refs/heads/main
+                token.actions.githubusercontent.com:sub: !Sub ${GitHubSubject}:ref:refs/heads/main
       Policies:
         - PolicyName: deploy-hana-notify
           PolicyDocument:

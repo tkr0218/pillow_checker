@@ -105,7 +105,7 @@ EventBridge Scheduler（1分ごと）──▶ Lambda ──▶ Web Push ──�
 ### 初回の準備
 
 1. AWS Budgets で月1ドルの予算アラートを作る
-2. 東京リージョン（ap-northeast-1）の CloudFormation で `server/bootstrap.yaml` からスタックを作る（スタック名は `hana-notify-bootstrap`）
+2. 東京リージョン（ap-northeast-1）の CloudFormation で `server/bootstrap.yaml` からスタックを作る（スタック名は `hana-notify-bootstrap`）。パラメータ `GitHubSubject` は、2026年7月15日以降に作ったリポジトリなら `repo:所有者@所有者ID/リポジトリ@リポジトリID`（ID は `GET /repos/{owner}/{repo}` の `owner.id` と `id`）
 3. GitHub の Settings → Secrets and variables → Actions で次を設定する
    - Variables: `AWS_ROLE_ARN`、`AWS_ARTIFACT_BUCKET`（bootstrap スタックの出力の値）
    - Secrets: `NOTIFY_PASSPHRASE`（8文字以上、空白なし）
