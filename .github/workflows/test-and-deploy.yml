@@ -63,4 +63,6 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides "NotifyPassphrase=${NOTIFY_PASSPHRASE}"
       - name: 通知サーバーの URL
-        run: aws cloudformation describe-stacks --stack-name hana-notify --query "Stacks[0].Outputs" --output table
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name hana-notify --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          echo "::notice title=ApiUrl::${url}"
