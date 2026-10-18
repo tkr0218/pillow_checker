@@ -924,7 +924,7 @@ img{max-width:100%}
   document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
   // ---- 通知 ----
   // 通知サーバーの URL（デプロイ後に設定する）。空のあいだは通知の設定を表示しない
-  const NOTIFY_URL = "";
+  const NOTIFY_URL = "https://uqvwkgbpqios6hiimmsyidldxq0wvhni.lambda-url.ap-northeast-1.on.aws/";
   const NOTIFY_KEY = "kusuri.notify.v1";   // 記録とは別に保存する（端末の登録情報）
   const notify = (() => {
     const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
