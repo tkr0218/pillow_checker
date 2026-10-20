@@ -83,7 +83,7 @@ export function makeApi({ store, passphrase, subject, now = () => new Date(), se
   };
 }
 
-// 1分ごとに呼ばれる。送る前に「送信済み」の印を付けるので、同じ通知は最大1回（重複より取りこぼしを選ぶ）
+// 10分ごとに呼ばれる。送る前に「送信済み」の印を付けるので、同じ通知は最大1回（重複より取りこぼしを選ぶ）
 export function makeTick({ store, subject, now = () => new Date(), send = sendPush, log = console.log }) {
   return async function tick() {
     const t = now(), vapid = await getVapid(store);

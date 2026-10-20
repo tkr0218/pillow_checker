@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { b64u, encrypt, generateVapidKeys, vapidHeader } from "../src/webpush.mjs";
-import { dueNotifications, localNow, validateState } from "../src/schedule.mjs";
+import { dueNotifications, localNow, validateState, TICK_MIN, WINDOW_MIN } from "../src/schedule.mjs";
 import { memoryStore } from "../src/store.mjs";
 import { makeApi, makeTick, MAX_DEVICES } from "../src/app.mjs";
 
@@ -84,6 +84,27 @@ test("23:50 の予定の再通知は翌日 0:20 に、前日の日付で送る",
   assert.deepEqual(n.map(x => x.key), ["2026-10-18|s1|remind"]);
   assert.match(n[0].payload.body, /寝る前の薬がまだ記録されていません/);
   assert.deepEqual(dueNotifications({ ...d, taken: { "2026-10-18": ["s1"] } }, JST(2026, 10, 19, 0, 20)), []);
+});
+
+test(`10分ごとの送信処理：どの時刻の予定でも、通知と再通知がちょうど1回ずつ・10分以内に届く`, () => {
+  assert.ok(WINDOW_MIN > TICK_MIN, "送る幅が間隔より短いと取りこぼす");
+  for (let m = 0; m < 1440; m++) {
+    const time = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const d = dev({ slots: [{ id: "s1", name: "朝", time }] });
+    const got = { first: [], remind: [] };
+    for (let t = 0; t < 2 * 1440; t += TICK_MIN) {   // 10/18 0:00 から2日分、毎時 0,10,20… 分
+      const now = JST(2026, 10, 18, Math.floor(t / 60) % 24, t % 60);
+      now.setUTCDate(now.getUTCDate() + Math.floor(t / 1440));
+      for (const n of dueNotifications(d, now)) {
+        if (n.date !== "2026-10-18") continue;
+        d.sent[n.key] = "x";
+        got[n.kind].push(t);
+      }
+    }
+    assert.equal(got.first.length, 1, `${time} の通知`);
+    assert.equal(got.remind.length, 1, `${time} の再通知`);
+    assert.ok(got.first[0] - m >= 0 && got.first[0] - m < TICK_MIN, `${time} の通知が ${got.first[0] - m} 分遅れ`);
+  }
 });
 
 test("不正な予定は受け付けない", () => {

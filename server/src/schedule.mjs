@@ -1,7 +1,9 @@
 // いつ・どの予定の通知を送るかを決める純粋関数。時刻と端末の情報だけを入力にし、副作用を持たない。
 
 export const REMIND_AFTER_MIN = 30;   // 最初の通知から再通知までの分数
+export const TICK_MIN = 10;            // 送信処理を動かす間隔（template.yaml の cron と合わせる）
 export const WINDOW_MIN = 15;          // 予定時刻からこの分数を過ぎたら送らない（止まっていた後にまとめて届くのを防ぐ）
+                                       // TICK_MIN より長くしておけば、どの時刻の予定も少なくとも1回は送信処理の時間に入る
 export const KEEP_DAYS = 3;            // taken / sent を残す日数
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;

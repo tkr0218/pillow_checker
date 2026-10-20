@@ -91,7 +91,7 @@ EventBridge Scheduler（朝・夜）────┘──▶ Lambda が web-push
 
 ```
 スマホ(PWA) ──登録・予定・服用状態──▶ Lambda（関数URL） ──▶ DynamoDB
-EventBridge Scheduler（1分ごと）──▶ Lambda ──▶ Web Push ──▶ スマホ
+EventBridge Scheduler（10分ごと）──▶ Lambda ──▶ Web Push ──▶ スマホ
 ```
 
 | ファイル | 役割 |
@@ -113,4 +113,4 @@ EventBridge Scheduler（1分ごと）──▶ Lambda ──▶ Web Push ──�
 
 ### 費用
 
-1分ごとの起動は月約4.3万回で、Lambda・EventBridge Scheduler の無料枠内。DynamoDB はプロビジョンド 2/2 で無料枠内。ログは7日で削除する。
+10分ごと（毎時0・10・20…分）の起動で月約4,300回。Lambda の無料枠内。DynamoDB はプロビジョンド 2/2 で無料枠内。ログは7日で削除する。

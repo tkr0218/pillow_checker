@@ -66,7 +66,7 @@ Resources:
           AllowHeaders: [content-type]
           MaxAge: 3600
 
-  # 1分ごとに予定を確認して通知を送る
+  # 10分ごとに予定を確認して通知を送る
   TickFunction:
     Type: AWS::Serverless::Function
     DependsOn: TickLogs
@@ -77,11 +77,13 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref Table }
       Events:
+        # 論理IDは1分ごとだったころの名前のまま（変えるとスケジュールが作り直しになり、同じ Name で作成に失敗する）
         EveryMinute:
           Type: ScheduleV2
           Properties:
             Name: hana-notify-tick
-            ScheduleExpression: rate(1 minute)
+            # 毎時 0,10,20,30,40,50 分に動く（rate(10 minutes) だと作成時刻が起点になり、時刻がずれる）
+            ScheduleExpression: cron(0/10 * * * ? *)
             RetryPolicy: { MaximumRetryAttempts: 0 }
 
 Outputs:
