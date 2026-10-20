@@ -336,6 +336,14 @@ img{max-width:100%}
       pity: 10,
       newChance: 0.7,
       series: true },
+    // v3：第二弾の★4を1種入れ替える（RETIRED と SPECIES の v: 3）。確率は v2 と同じ
+    { v: 3, from: "2026-10-20T13:10:00.000Z",
+      weights: [62, 28, 8, 2],
+      luckyWeights: [56, 30, 11, 3],
+      luckyStreak: 3,
+      pity: 10,
+      newChance: 0.7,
+      series: true },
   ];
   // at は日付（YYYY-MM-DD）でも ISO 時刻でもよい。v1 の from は日付、v2 以降は時刻（文字列の大小で比べられる）
   const rulesetFor = at => RULESETS.filter(r => r.from <= at).pop();
@@ -409,8 +417,15 @@ img{max-width:100%}
     { id: "meconopsis", nm: "ヒマラヤの青いけし", r: 4, v: 2, series: 2, shape: "round", n: 4, c: "#5aa6e6", ctr: "#f2d24a" },
     { id: "rafflesia", nm: "ラフレシア",     r: 4, v: 2, series: 2, shape: "round",   n: 5,  c: "#b5312a", ctr: "#3a1410" },
     { id: "udonge",    nm: "優曇華",         r: 4, v: 2, series: 2, shape: "thin",    n: 24, c: "#f4ead0", ctr: "#e9c75a", glow: true },
+    // ---- 第二弾 追加（v3） ----
+    { id: "titanarum", nm: "ショクダイオオコンニャク", r: 4, v: 3, series: 2, shape: "tulip", n: 3, c: "#7a1f3a", ctr: "#c9b27a" },
   ];
   const seriesOf = sp => sp.series || 1;
+  // 咲かなくなった花（追記のみ）。from の版以降の抽選に出ない。すでに咲いた花は残り、図鑑にも表示する
+  const RETIRED = [
+    { id: "udonge", from: 3 },
+  ];
+  const retiredIn = id => (RETIRED.find(r => r.id === id) || {}).from || Infinity;
   const BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
   const DESC = {
     1: "よく見かける花。", 2: "ちょっとめずらしい花。", 3: "なかなか咲かない花。", 4: "めったに咲かない幻の花。",
@@ -520,7 +535,7 @@ img{max-width:100%}
     const recent = prev.slice(-(rs.pity - 1));
     const pity = recent.length === rs.pity - 1 && recent.every(b => b.sp.r < 3);
     if (pity && rar < 3) rar = 3;
-    const inVersion = s => (s.v || 1) <= rs.v && seriesOf(s) === series;
+    const inVersion = s => (s.v || 1) <= rs.v && rs.v < retiredIn(s.id) && seriesOf(s) === series;
     let pool = SPECIES.filter(s => inVersion(s) && s.r === rar && (!s.months || s.months.includes(month)));
     if (!pool.length) pool = SPECIES.filter(s => inVersion(s) && s.r === rar && !s.months);
     const owned = new Set(prev.map(b => b.sp.id));
@@ -602,6 +617,7 @@ img{max-width:100%}
     kochouran:  ["ラン科", "主に冬〜春", "東南アジアなどが原産。花が蝶の舞う姿に似ていることからこの名前になった。花が長くもつので、贈り物に使われる。"],
     meconopsis: ["ケシ科", "6〜7月", "ヒマラヤなどの高山に生える。青いケシとも呼ばれる。暑さに弱く、日本の平地で育てるのは難しい。"],
     rafflesia:  ["ラフレシア科", "不定期", "東南アジアの森に生える寄生植物。直径1メートル近くになる、世界最大級の花。葉も茎もなく、開花は数日で終わる。においは腐った肉に似ている。"],
+    titanarum:  ["サトイモ科", "数年に一度", "インドネシアのスマトラ島原産。花のように見える部分は高さ3メートル近くになることがある。数年に一度しか咲かず、開花は2日ほどで終わる。咲いている間は強いにおいを出す。"],
     udonge:     ["想像上の花", "", "仏教の経典に出てくる、三千年に一度だけ咲くとされる花。めったにないことのたとえとして使われる。"],
   };
 
@@ -762,6 +778,10 @@ img{max-width:100%}
   const MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/><circle cx="21" cy="9" r=".8" fill="currentColor"/></svg>';
   const $ = id => document.getElementById(id);
   let plantSig = "", boxSig = "", schedSig = "", filter = 0, zSeries = 1;
+  // 図鑑に並べる花：咲かなくなった花は、咲いたことがある場合だけ表示する。番号は表示順（弾→レア度の並び）で振る
+  const zukanList = owned => SPECIES.filter(sp => retiredIn(sp.id) === Infinity || owned[sp.id])
+    .sort((a, b) => seriesOf(a) - seriesOf(b) || a.r - b.r || SPECIES.indexOf(a) - SPECIES.indexOf(b));
+  const noOf = (sp, owned) => { const i = zukanList(owned).indexOf(sp); return i < 0 ? "" : "No." + String(i + 1).padStart(2, "0"); };
 
   function render() {
     const now = new Date(), key = dayKey(now), A = computeAll(now);
@@ -820,7 +840,7 @@ img{max-width:100%}
     for (const b of document.querySelectorAll(".pick button")) b.setAttribute("aria-pressed", String(Number(b.dataset.s) === curSeries));
 
     // zukan
-    const inSeries = SPECIES.filter(sp => seriesOf(sp) === zSeries);
+    const inSeries = zukanList(A.owned).filter(sp => seriesOf(sp) === zSeries);
     const ownedN = inSeries.filter(sp => A.owned[sp.id]).length;
     $("zukan-n").textContent = `${ownedN} / ${inSeries.length}種`;
     for (const b of document.querySelectorAll("#series-tabs button")) b.setAttribute("aria-pressed", String(Number(b.dataset.s) === zSeries));
@@ -830,7 +850,7 @@ img{max-width:100%}
       const got = A.owned[sp.id] || 0;
       const c = document.createElement("button"); c.type = "button"; c.dataset.sp = sp.id; c.className = `card r${sp.r}` + (got ? "" : " locked");
       c.innerHTML = flowerIcon(sp, !got);
-      const no = document.createElement("span"); no.className = "no"; no.textContent = "No." + String(SPECIES.indexOf(sp) + 1).padStart(2, "0"); c.prepend(no);
+      const no = document.createElement("span"); no.className = "no"; no.textContent = noOf(sp, A.owned); c.prepend(no);
       const nm = document.createElement("span"); nm.className = "nm";
       nm.textContent = got ? sp.nm : (sp.months ? `${sp.months.join("・")}月のみ` : "未発見");
       const st = document.createElement("span"); st.className = "stars" + (sp.r === 4 ? " r4" : ""); st.textContent = starStr(sp.r);
@@ -849,7 +869,7 @@ img{max-width:100%}
       ["予定を全部飲めた日", `${doneDays}日`],
       ["最長連続", `${Math.max(bestStreak(), currentStreak(now))}日`],
       ["咲いた花", `${A.bloomed}本（${Object.keys(A.owned).length}種類）`],
-      ...[1, 2].map(n => [`図鑑 第${n === 1 ? "一" : "二"}弾`, `${SPECIES.filter(sp => seriesOf(sp) === n && A.owned[sp.id]).length} / ${SPECIES.filter(sp => seriesOf(sp) === n).length}種`]),
+      ...[1, 2].map(n => { const L = zukanList(A.owned).filter(sp => seriesOf(sp) === n); return [`図鑑 第${n === 1 ? "一" : "二"}弾`, `${L.filter(sp => A.owned[sp.id]).length} / ${L.length}種`]; }),
       ["一番多く咲いた花", top ? `${top.nm}　${cnt[top.id]}本` : "なし"],
       ["使い始めた日", usedDays.length ? fmtDay(usedDays.sort()[0]) : "なし"],
     ];
@@ -948,7 +968,7 @@ img{max-width:100%}
   function reveal(b, isNew) {
     lastFocus = document.activeElement;
     $("rv-art").innerHTML = flowerIcon(b.sp, false);
-    $("rv-no").textContent = "No." + String(SPECIES.indexOf(b.sp) + 1).padStart(2, "0");
+    $("rv-no").textContent = noOf(b.sp, computeAll(new Date()).owned);
     $("rv-name").textContent = b.sp.nm;
     $("rv-stars").textContent = starStr(b.sp.r); $("rv-stars").className = "stars" + (b.sp.r === 4 ? " r4" : "");
     $("rv-desc").textContent = (b.sp.months ? `${b.sp.months.join("・")}月にだけ出る種類です。` : "")
@@ -967,7 +987,7 @@ img{max-width:100%}
     const sp = SPECIES.find(x => x.id === id); if (!sp) return;
     const A = computeAll(new Date()), mine = A.blooms.filter(b => b.sp.id === id), got = mine.length > 0;
     lastFocus = document.activeElement;
-    $("rv-no").textContent = "No." + String(SPECIES.indexOf(sp) + 1).padStart(2, "0");
+    $("rv-no").textContent = noOf(sp, A.owned);
     $("rv-new").hidden = true;
     $("rv-art").innerHTML = flowerIcon(sp, !got);
     $("rv-name").textContent = got ? sp.nm : "未発見";

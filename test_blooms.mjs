@@ -14,6 +14,8 @@ const load = () => new Function(`${logic}; return { state, computeAll, dayKey, a
 const LEGACY_SNAP = new URL("./blooms.legacy.snapshot.json", import.meta.url);
 const V1_SNAP = new URL("./blooms.v1.snapshot.json", import.meta.url);   // v2（第二弾・確率変更）を入れる前の結果
 const V2_DAY = "2026-10-20";   // v2 は 2026-10-20 21:00 以降の記録から
+const V2_SNAP = new URL("./blooms.v2.snapshot.json", import.meta.url);   // v3（第二弾★4の入れ替え）を入れる前の結果
+const V3_AT = "2026-10-20T13:10:00.000Z";   // v3 は 2026-10-20 22:10 以降の記録から
 const CUTOVER_DAY = "2026-10-14";
 
 // 2026年1年分：基本は毎日朝夜、ときどき飲み忘れ
@@ -55,15 +57,15 @@ test("過去の花はスナップショットと一致する", () => {
 test("新しい版（ルール・花）を足しても、それ以前に咲いた花は変わらない", () => {
   const before = (() => { const L = load(); fillYear(L); return summary(L.computeAll(END)); })();
   const L = load(); fillYear(L);
-  L.RULESETS.push({ v: 3, from: "2027-01-01", weights: [10, 10, 40, 40], luckyWeights: [0, 0, 50, 50], luckyStreak: 1, pity: 2, newChance: 1, series: true });
-  L.SPECIES.push({ id: "test-new", nm: "テスト花", r: 1, v: 3, shape: "round", n: 5, c: "#000", ctr: "#fff" });
+  L.RULESETS.push({ v: 99, from: "2027-01-01", weights: [10, 10, 40, 40], luckyWeights: [0, 0, 50, 50], luckyStreak: 1, pity: 2, newChance: 1, series: true });
+  L.SPECIES.push({ id: "test-new", nm: "テスト花", r: 1, v: 99, shape: "round", n: 5, c: "#000", ctr: "#fff" });
   assert.deepEqual(summary(L.computeAll(END)), before);
 });
 
 test("新しい版の花は、その版の適用時刻以降にしか咲かない", () => {
   const L = load(); fillYear(L);
-  L.RULESETS.push({ v: 3, from: "2026-11-15T00:00:00.000Z", weights: [100, 0, 0, 0], luckyWeights: [100, 0, 0, 0], luckyStreak: 99, pity: 99, newChance: 1, series: true });
-  L.SPECIES.push({ id: "v3-only", nm: "新花", r: 1, v: 3, shape: "round", n: 5, c: "#000", ctr: "#fff" });
+  L.RULESETS.push({ v: 99, from: "2026-11-15T00:00:00.000Z", weights: [100, 0, 0, 0], luckyWeights: [100, 0, 0, 0], luckyStreak: 99, pity: 99, newChance: 1, series: true });
+  L.SPECIES.push({ id: "v3-only", nm: "新花", r: 1, v: 99, shape: "round", n: 5, c: "#000", ctr: "#fff" });
   const bl = L.computeAll(END).blooms;
   assert.ok(bl.filter(b => b.sp.id === "v3-only").every(b => b.k >= "2026-11-15"));
   assert.ok(bl.some(b => b.sp.id === "v3-only"), "新しい版の花が一度も咲いていない");
@@ -107,6 +109,27 @@ test("第二弾：v2 より前は第二弾を選んでいても第一弾の花�
   const L = load(); fillYear(L);
   L.state.settings = { ...L.state.settings, seriesLog: [{ at: "2026-01-01T00:00:00.000Z", s: 2 }] };
   for (const b of L.computeAll(END).blooms) if (b.k < V2_DAY) assert.equal(L.seriesOf(b.sp), 1);
+});
+
+test("v3 を入れる前（2026-10-20 22:10 より前）に咲いた花は、v2 のときと同じ", () => {
+  const L = load(); fillYear(L);
+  const before = JSON.parse(readFileSync(V2_SNAP, "utf8")).filter(x => x <= "2026-10-20");
+  const now = summary(L.computeAll(END)).filter(x => x <= "2026-10-20");
+  assert.ok(before.length > 40);
+  assert.deepEqual(now, before);
+});
+
+test("v3：入れ替えた花は v3 以降に咲かず、新しい花は v3 以降の第二弾にだけ咲く", () => {
+  let newSeen = 0;
+  for (const start of ["2026-10-21", "2026-11-03", "2026-12-17", "2027-01-09", "2027-02-25", "2027-04-02", "2027-05-19", "2027-07-07"]) {
+    const L = load(); v2User(L, start, 365, [{ at: "2026-10-01T00:00:00.000Z", s: 2 }]);
+    const [y, m, d] = start.split("-").map(Number);
+    for (const b of L.computeAll(new Date(y + 1, m - 1, d, 23)).blooms) {
+      assert.notEqual(b.sp.id, "udonge", `${b.k} に入れ替えた花が咲いた`);
+      if (b.sp.id === "titanarum") { newSeen++; assert.equal(b.series, 2); assert.ok(b.v >= 3); }
+    }
+  }
+  assert.ok(newSeen > 0, "新しい花が一度も咲かない");
 });
 
 test("v2 の確率：毎日欠かさず記録しても ★4 はまれ（1年で数本程度）", () => {
