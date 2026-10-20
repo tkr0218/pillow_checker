@@ -57,6 +57,12 @@ h2 .count{margin-left:auto;font-family:var(--f-num);font-weight:400}
 .gauge i{width:8px;height:8px;border-radius:50%;background:var(--line-2);flex:none}
 .gauge i.on{background:var(--fg)}
 
+/* Series choice */
+.pick{grid-column:1/-1;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:.78rem;color:var(--muted)}
+.pick button{font:700 .82rem var(--f-body);padding:2px 0;border:0;border-bottom:1px solid transparent;border-radius:0;background:none;color:var(--muted);cursor:pointer}
+.pick button[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--fg)}
+.pick button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+#series-tabs{margin-bottom:8px}
 /* Today */
 .box{display:grid;grid-template-columns:repeat(var(--cols,2),minmax(0,1fr))}
 .box[data-n="3"] .slot .label{font-size:1.35rem}
@@ -210,6 +216,7 @@ img{max-width:100%}
       <span class="grow" id="grow"></span>
       <span class="luck" id="luck" hidden>3日以上連続中：★3・★4が出やすい状態</span>
     </div>
+    <div class="pick" role="group" aria-labelledby="pick-l"><span id="pick-l">次に咲かせる花</span><button type="button" data-s="1">第一弾</button><button type="button" data-s="2">第二弾</button></div>
   </section>
 
   <section aria-labelledby="h-today">
@@ -221,12 +228,13 @@ img{max-width:100%}
   <section aria-labelledby="h-garden">
     <h2 id="h-garden">咲いた花 <span class="count" id="garden-n"></span></h2>
     <div class="garden" id="garden"></div>
-    <p class="hint">記録4回で1本目が咲き、その後は6回ごとに咲きます。予定を全部飲めなかった日があった場合、いま育てている花はそのままで、その次の花が4回で咲きます。種類は咲いたときに決まります。前日まで3日以上連続していると★3・★4が出やすくなり、★3以上が8本続けて出なかった場合、次は★3以上になります。</p>
+    <p class="hint">記録4回で1本目が咲き、その後は6回ごとに咲きます。予定を全部飲めなかった日があった場合、いま育てている花はそのままで、その次の花が4回で咲きます。種類は咲いたときに決まり、そのとき「次に咲かせる花」で選んでいる弾（第一弾・第二弾）の中から咲きます。前日まで3日以上連続していると★3・★4が少し出やすくなり、★3以上が9本続けて出なかった場合、次は★3以上になります。</p>
   </section>
 
   <section aria-labelledby="h-zukan">
     <h2 id="h-zukan">図鑑 <span class="count" id="zukan-n"></span></h2>
     <p class="hint" style="margin:-8px 0 16px">花をタップすると解説を表示します。</p>
+    <div class="filters" id="series-tabs" role="group" aria-label="弾を選ぶ"></div>
     <div class="filters" id="filters" role="group" aria-label="レア度で絞り込み"></div>
     <div class="zukan" id="zukan"></div>
   </section>
@@ -317,10 +325,20 @@ img{max-width:100%}
       weights: [55, 30, 12, 3],          // ★1..★4
       luckyWeights: [35, 33, 22, 10],    // 連続記録中
       luckyStreak: 3,                    // 前日までこの日数連続でレア率アップ
-      pity: 8,                           // この本数 ★3以上が出なければ次は★3以上確定
+      pity: 8,                           // この本数 ★3以上が出なければ次は★3以上確定（直前 pity-1 本で判定）
       newChance: 0.7 },                  // 未発見の花を優先する確率
+    // v2：★3・★4 を出にくくする。第二弾を追加し、咲いた瞬間に選ばれている弾から咲く
+    //   from は ISO 時刻。この時刻より後に記録した回で咲く花から適用（それより前の花は v1 のまま）
+    { v: 2, from: "2026-10-20T12:00:00.000Z",
+      weights: [62, 28, 8, 2],
+      luckyWeights: [56, 30, 11, 3],
+      luckyStreak: 3,
+      pity: 10,
+      newChance: 0.7,
+      series: true },
   ];
-  const rulesetFor = dayK => RULESETS.filter(r => r.from <= dayK).pop();
+  // at は日付（YYYY-MM-DD）でも ISO 時刻でもよい。v1 の from は日付、v2 以降は時刻（文字列の大小で比べられる）
+  const rulesetFor = at => RULESETS.filter(r => r.from <= at).pop();
 
   // 何回の記録で花が咲くか。from は ISO 時刻（記録時刻で比較）。追記のみ。
   //  legacy: 1本目4回、2本目8回、3本目12回、以降14回（2026-10-14 14:00 より前の記録）
@@ -362,7 +380,37 @@ img{max-width:100%}
     { id: "bluerose", nm: "青いバラ",     r: 4, shape: "rose",    n: 5,  c: "#4f6fd8", ctr: "#2f46a8" },
     { id: "niji",     nm: "にじいろの花", r: 4, shape: "rainbow", n: 7,  c: "#e8505b", ctr: "#ffffff" },
     { id: "gekka",    nm: "月下美人",     r: 4, shape: "thin",    n: 24, c: "#f6f3ea", ctr: "#f2e08a", glow: true },
+    // ---- 第二弾（v2・series 2） ----
+    // ★1
+    { id: "nanohana",  nm: "なのはな",       r: 1, v: 2, series: 2, shape: "round",   n: 4,  c: "#f2d43a", ctr: "#e3b81f" },
+    { id: "renge",     nm: "れんげそう",     r: 1, v: 2, series: 2, shape: "cluster", n: 9,  c: "#e98ab8", ctr: "#f6d6e6" },
+    { id: "tsuyukusa", nm: "つゆくさ",       r: 1, v: 2, series: 2, shape: "round",   n: 3,  c: "#3d6fe0", ctr: "#f2d24a" },
+    { id: "hotokenoza", nm: "ほとけのざ",    r: 1, v: 2, series: 2, shape: "pointed", n: 6,  c: "#c75aa8", ctr: "#f0d0e6" },
+    { id: "nadeshiko", nm: "なでしこ",       r: 1, v: 2, series: 2, shape: "notched", n: 5,  c: "#f08fb8", ctr: "#c94a86" },
+    { id: "marigold",  nm: "マリーゴールド", r: 1, v: 2, series: 2, shape: "layered", n: 10, c: "#f59a1e", ctr: "#c96a0a" },
+    { id: "daisy",     nm: "デイジー",       r: 1, v: 2, series: 2, shape: "thin",    n: 16, c: "#fbe3ec", ctr: "#f2c230" },
+    { id: "salvia",    nm: "サルビア",       r: 1, v: 2, series: 2, shape: "pointed", n: 4,  c: "#e0352b", ctr: "#a8241c" },
+    // ★2
+    { id: "lavender",  nm: "ラベンダー",     r: 2, v: 2, series: 2, shape: "cluster", n: 9,  c: "#9a7ad6", ctr: "#c7b2ef" },
+    { id: "carnation", nm: "カーネーション", r: 2, v: 2, series: 2, shape: "layered", n: 8,  c: "#e5466a", ctr: "#b8284b" },
+    { id: "sweetpea",  nm: "スイートピー",   r: 2, v: 2, series: 2, shape: "round",   n: 4,  c: "#f4b6d2", ctr: "#e7e0f6" },
+    { id: "rindou",    nm: "りんどう",       r: 2, v: 2, series: 2, shape: "cup",     n: 5,  c: "#4f5fd0", ctr: "#e4e7fb" },
+    { id: "freesia",   nm: "フリージア",     r: 2, v: 2, series: 2, shape: "tulip",   n: 3,  c: "#f5d84a", ctr: "#f5d84a" },
+    { id: "cyclamen",  nm: "シクラメン",     r: 2, v: 2, series: 2, shape: "pointed", n: 5,  c: "#d33a8c", ctr: "#7a1c4c" },
+    { id: "hibiscus",  nm: "ハイビスカス",   r: 2, v: 2, series: 2, shape: "round",   n: 5,  c: "#e8343f", ctr: "#7d1018" },
+    // ★3（季節限定あり）
+    { id: "tsubaki",   nm: "つばき",         r: 3, v: 2, series: 2, shape: "round",   n: 5,  c: "#c8232f", ctr: "#f2c230", months: [12, 1], season: "冬" },
+    { id: "fuji",      nm: "ふじ",           r: 3, v: 2, series: 2, shape: "cluster", n: 9,  c: "#9b86d8", ctr: "#c9bcef", months: [4, 5], season: "春" },
+    { id: "hasu",      nm: "はす",           r: 3, v: 2, series: 2, shape: "layered", n: 8,  c: "#f3a8c4", ctr: "#e9d24a", months: [7, 8], season: "夏" },
+    { id: "kinmokusei", nm: "きんもくせい",  r: 3, v: 2, series: 2, shape: "notched", n: 4,  c: "#f39a2a", ctr: "#f7c06a", months: [9, 10], season: "秋" },
+    { id: "shakuyaku", nm: "しゃくやく",     r: 3, v: 2, series: 2, shape: "rose",    n: 6,  c: "#f2a0b8", ctr: "#d5607e" },
+    { id: "kochouran", nm: "こちょうらん",   r: 3, v: 2, series: 2, shape: "round",   n: 5,  c: "#f7f3f8", ctr: "#c03a8a" },
+    // ★4
+    { id: "meconopsis", nm: "ヒマラヤの青いけし", r: 4, v: 2, series: 2, shape: "round", n: 4, c: "#5aa6e6", ctr: "#f2d24a" },
+    { id: "rafflesia", nm: "ラフレシア",     r: 4, v: 2, series: 2, shape: "round",   n: 5,  c: "#b5312a", ctr: "#3a1410" },
+    { id: "udonge",    nm: "優曇華",         r: 4, v: 2, series: 2, shape: "thin",    n: 24, c: "#f4ead0", ctr: "#e9c75a", glow: true },
   ];
+  const seriesOf = sp => sp.series || 1;
   const BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
   const DESC = {
     1: "よく見かける花。", 2: "ちょっとめずらしい花。", 3: "なかなか咲かない花。", 4: "めったに咲かない幻の花。",
@@ -405,6 +453,8 @@ img{max-width:100%}
   const scheduleFor = k => state.settings.schedules.filter(s => s.from <= k).pop() || state.settings.schedules[0];
   const slotsFor = k => scheduleFor(k).slots;
   const isDone = k => { const rec = state.days[k]; return !!rec && slotsFor(k).every(s => rec[s.id]); };
+  // 「次に咲かせる花」の選択。[{ at: ISO 時刻, s: 1|2 }] を追記していく。咲いた瞬間に有効な選択でその花の弾が決まる
+  const seriesAt = iso => { let s = 1; for (const e of state.settings.seriesLog || []) if (e.at <= iso) s = e.s; return s; };
   const firstUseDay = () => Object.keys(state.days).filter(k => Object.values(state.days[k]).some(Boolean)).sort()[0];
   // 予定を変更：今日の版があれば置き換え、なければ今日からの版を足す
   function setTodaySlots(todayK, slots) {
@@ -458,10 +508,11 @@ img{max-width:100%}
   // 時刻(ms)を使わないので、取り消し→再タップで引き直しはできない。
   // 判定に使うのは前日までの確定済みの記録だけ（今日あとから達成しても結果は変わらない）。
   function bloomAt(i, ds, n, prev) {
-    const k = ds[n].k, rs = rulesetFor(k);
+    const k = ds[n].k, rs = rulesetFor(ds[n].t);   // v1 は日付、v2 以降は記録時刻で版を決める（日付だけの v1 も同じ結果になる）
     const lucky = streakEndingAt(dayKey(addDays(parseKey(k), -1))) >= rs.luckyStreak;
     const month = parseKey(k).getMonth() + 1;
-    const rand = rng(hash(`v${rs.v}|${i}|${k}|${ds[0].k}`));
+    const series = rs.series ? seriesAt(ds[n].t) : 1;
+    const rand = rng(hash(`v${rs.v}|${i}|${k}|${ds[0].k}` + (rs.series ? `|s${series}` : "")));
     const w = lucky ? rs.luckyWeights : rs.weights;
     let roll = rand() * w.reduce((a, b) => a + b, 0), rar = 1;
     for (let j = 0; j < 4; j++) { if ((roll -= w[j]) < 0) { rar = j + 1; break; } }
@@ -469,14 +520,14 @@ img{max-width:100%}
     const recent = prev.slice(-(rs.pity - 1));
     const pity = recent.length === rs.pity - 1 && recent.every(b => b.sp.r < 3);
     if (pity && rar < 3) rar = 3;
-    const inVersion = s => (s.v || 1) <= rs.v;
+    const inVersion = s => (s.v || 1) <= rs.v && seriesOf(s) === series;
     let pool = SPECIES.filter(s => inVersion(s) && s.r === rar && (!s.months || s.months.includes(month)));
     if (!pool.length) pool = SPECIES.filter(s => inVersion(s) && s.r === rar && !s.months);
     const owned = new Set(prev.map(b => b.sp.id));
     const fresh = pool.filter(s => !owned.has(s.id));
     const pickNew = rand() < rs.newChance && fresh.length > 0;
     const from = pickNew ? fresh : pool;
-    return { sp: from[Math.floor(rand() * from.length)], k, lucky, pity, v: rs.v };
+    return { sp: from[Math.floor(rand() * from.length)], k, lucky, pity, v: rs.v, series };
   }
   function computeAll(now) {
     const ds = doses(), total = ds.length, firstK = ds.length ? firstUseDay() : null;
@@ -497,7 +548,7 @@ img{max-width:100%}
     const gapH = 24 / Math.max(1, slotsFor(dayKey(now)).length) + 4;   // 1日の回数に応じた「間が空いた」の目安
     if (total) { const h = (now - new Date(ds[total - 1].t)) / 36e5; thirst = Math.max(0, Math.min(1, (h - gapH) / 20)); }
     const owned = {}; for (const b of blooms) owned[b.sp.id] = (owned[b.sp.id] || 0) + 1;
-    const luckyNow = streakEndingAt(dayKey(addDays(now, -1))) >= rulesetFor(dayKey(now)).luckyStreak;
+    const luckyNow = streakEndingAt(dayKey(addDays(now, -1))) >= rulesetFor(now.toISOString()).luckyStreak;
     return { total, bloomed, progress, need, thirst, gapH, blooms, owned, luckyNow };
   }
   // @logic-end
@@ -528,6 +579,30 @@ img{max-width:100%}
     bluerose:   ["バラ科", "5〜6月、10〜11月", "バラには青い色素を作る遺伝子がないため、青いバラは長く「不可能」のたとえとされた。遺伝子組換えで青い色素を持つバラが日本で開発され、2009年に販売が始まった。"],
     niji:       ["架空の花", "", "このアプリだけに登場する、実在しない花。"],
     gekka:      ["サボテン科", "6〜11月", "メキシコから中南米が原産。夜に咲き始め、強い香りを出して、数時間でしぼむ。一晩しか咲かない。"],
+    nanohana:   ["アブラナ科", "2〜4月", "アブラナ類の黄色い花をまとめた呼び名。種から油をとるために栽培されてきた。つぼみや若い茎は食用にもなる。"],
+    renge:      ["マメ科", "4〜5月", "正式な和名はゲンゲ。根に付く菌が空気中の窒素を取り込むので、かつては田植え前の田んぼの肥料として育てられた。"],
+    tsuyukusa:  ["ツユクサ科", "6〜9月", "朝に咲いて昼にはしぼむ。青い花びら2枚と、目立たない白い花びら1枚がある。花の汁は昔、布を染めるのに使われた。"],
+    hotokenoza: ["シソ科", "3〜5月", "葉が茎を囲むように付き、その形を仏の座る台に見立てた名前。春の七草の「ほとけのざ」は、キク科のコオニタビラコという別の植物。"],
+    nadeshiko:  ["ナデシコ科", "7〜10月", "秋の七草の一つ。花びらの先が細かく切れ込んでいる。日本の野生種はカワラナデシコと呼ばれる。"],
+    marigold:   ["キク科", "4〜11月", "メキシコ原産。根から出る物質が土の中の線虫を減らすとされ、畑の周りに植えられることがある。"],
+    daisy:      ["キク科", "3〜5月", "和名はヒナギク。ヨーロッパ原産。日が当たると開き、夜や曇りの日には閉じる。"],
+    salvia:     ["シソ科", "6〜11月", "花壇でよく見る赤い種類はブラジル原産。花の付け根に蜜があり、筒の形の花を鳥が訪れて受粉を手伝う。"],
+    lavender:   ["シソ科", "6〜7月", "地中海沿岸が原産。花や葉に香りの成分が多く、精油や香料に使われる。北海道の富良野で広く栽培されている。"],
+    carnation:  ["ナデシコ科", "4〜6月", "地中海沿岸が原産。アメリカで始まった母の日に、赤いカーネーションを贈る習慣がある。"],
+    sweetpea:   ["マメ科", "3〜5月", "イタリアのシチリア島が原産とされる。甘い香りがあり、蝶が羽を広げたような形の花が咲く。豆は食べられない。"],
+    rindou:     ["リンドウ科", "9〜11月", "晴れた日に花が開き、曇りや雨の日は閉じる。根は苦く、胃の薬として使われてきた。"],
+    freesia:    ["アヤメ科", "3〜4月", "南アフリカ原産。花が茎の片側に一列に並んで咲く。香りが強く、切り花として人気がある。"],
+    cyclamen:   ["サクラソウ科", "11〜3月", "地中海沿岸が原産。花びらが上向きに反り返る。冬の鉢花として多く出回る。"],
+    hibiscus:   ["アオイ科", "6〜10月", "熱帯・亜熱帯の花。一つの花は1日でしぼむことが多いが、次々に咲く。ハワイの州花はハイビスカスの一種。"],
+    tsubaki:    ["ツバキ科", "12〜4月", "日本原産。花びらが散らず、花ごと落ちる。種からとる椿油は、髪や食用に使われる。"],
+    fuji:       ["マメ科", "4〜5月", "日本原産のつる植物。房の長さは種類によって1メートルを超える。つるの巻き方は上から見て右巻き。"],
+    hasu:       ["ハス科", "7〜8月", "朝に開き、昼には閉じる。葉は水をはじく。地下の茎はれんこんとして食べられる。"],
+    kinmokusei: ["モクセイ科", "9〜10月", "中国原産。強い香りの小さなオレンジ色の花が集まって咲く。日本で見られる木はほとんどが雄の木で、実はできない。"],
+    shakuyaku:  ["ボタン科", "5〜6月", "ボタンとよく似ているが、ボタンは木、シャクヤクは冬に地上部が枯れる草。根は漢方薬に使われる。"],
+    kochouran:  ["ラン科", "主に冬〜春", "東南アジアなどが原産。花が蝶の舞う姿に似ていることからこの名前になった。花が長くもつので、贈り物に使われる。"],
+    meconopsis: ["ケシ科", "6〜7月", "ヒマラヤなどの高山に生える。青いケシとも呼ばれる。暑さに弱く、日本の平地で育てるのは難しい。"],
+    rafflesia:  ["ラフレシア科", "不定期", "東南アジアの森に生える寄生植物。直径1メートル近くになる、世界最大級の花。葉も茎もなく、開花は数日で終わる。においは腐った肉に似ている。"],
+    udonge:     ["想像上の花", "", "仏教の経典に出てくる、三千年に一度だけ咲くとされる花。めったにないことのたとえとして使われる。"],
   };
 
   // ---- 花の描画 ----
@@ -659,7 +734,7 @@ img{max-width:100%}
   }
   async function persistSettings() {
     saveLocal(); if (!col) return;
-    try { await col.doc("settings").set({ schedules: state.settings.schedules }); } catch (_) {}
+    try { await col.doc("settings").set({ schedules: state.settings.schedules, seriesLog: state.settings.seriesLog || [] }); } catch (_) {}
   }
 
   // ---- 描画 ----
@@ -686,7 +761,7 @@ img{max-width:100%}
   const SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></g></svg>';
   const MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/><circle cx="21" cy="9" r=".8" fill="currentColor"/></svg>';
   const $ = id => document.getElementById(id);
-  let plantSig = "", boxSig = "", schedSig = "", filter = 0;
+  let plantSig = "", boxSig = "", schedSig = "", filter = 0, zSeries = 1;
 
   function render() {
     const now = new Date(), key = dayKey(now), A = computeAll(now);
@@ -740,11 +815,17 @@ img{max-width:100%}
       for (let i = start; i < A.bloomed; i++) { const w = document.createElement("button"); w.type = "button"; w.dataset.sp = A.blooms[i].sp.id; w.setAttribute("aria-label", `${A.blooms[i].sp.nm}の解説`); w.title = A.blooms[i].sp.nm; w.innerHTML = miniFlower(A.blooms[i].sp); gd.append(w); }
     }
 
+    // series choice
+    const curSeries = seriesAt(new Date().toISOString());
+    for (const b of document.querySelectorAll(".pick button")) b.setAttribute("aria-pressed", String(Number(b.dataset.s) === curSeries));
+
     // zukan
-    const ownedN = Object.keys(A.owned).length;
-    $("zukan-n").textContent = `${ownedN} / ${SPECIES.length}種`;
+    const inSeries = SPECIES.filter(sp => seriesOf(sp) === zSeries);
+    const ownedN = inSeries.filter(sp => A.owned[sp.id]).length;
+    $("zukan-n").textContent = `${ownedN} / ${inSeries.length}種`;
+    for (const b of document.querySelectorAll("#series-tabs button")) b.setAttribute("aria-pressed", String(Number(b.dataset.s) === zSeries));
     const zk = $("zukan"); zk.replaceChildren();
-    for (const sp of SPECIES) {
+    for (const sp of inSeries) {
       if (filter && sp.r !== filter) continue;
       const got = A.owned[sp.id] || 0;
       const c = document.createElement("button"); c.type = "button"; c.dataset.sp = sp.id; c.className = `card r${sp.r}` + (got ? "" : " locked");
@@ -768,6 +849,7 @@ img{max-width:100%}
       ["予定を全部飲めた日", `${doneDays}日`],
       ["最長連続", `${Math.max(bestStreak(), currentStreak(now))}日`],
       ["咲いた花", `${A.bloomed}本（${Object.keys(A.owned).length}種類）`],
+      ...[1, 2].map(n => [`図鑑 第${n === 1 ? "一" : "二"}弾`, `${SPECIES.filter(sp => seriesOf(sp) === n && A.owned[sp.id]).length} / ${SPECIES.filter(sp => seriesOf(sp) === n).length}種`]),
       ["一番多く咲いた花", top ? `${top.nm}　${cnt[top.id]}本` : "なし"],
       ["使い始めた日", usedDays.length ? fmtDay(usedDays.sort()[0]) : "なし"],
     ];
@@ -837,6 +919,21 @@ img{max-width:100%}
     if (setTodaySlots(dayKey(new Date()), slots)) { persistSettings(); render(); toast(msg); notify.sync(); }
   }
 
+  // 図鑑の弾の切り替え
+  for (const n of [1, 2]) {
+    const b = document.createElement("button"); b.type = "button"; b.dataset.s = n; b.textContent = n === 1 ? "第一弾" : "第二弾";
+    b.addEventListener("click", () => { zSeries = n; render(); });
+    $("series-tabs").append(b);
+  }
+  // 次に咲かせる花の選択。選んだ時刻とともに記録する（あとから選び直しても、すでに咲いた花は変わらない）
+  for (const b of document.querySelectorAll(".pick button")) b.addEventListener("click", () => {
+    const n = Number(b.dataset.s), nowIso = new Date().toISOString();
+    if (seriesAt(nowIso) === n) return;
+    state.settings.seriesLog = [...(state.settings.seriesLog || []), { at: nowIso, s: n }];
+    persistSettings(); render();
+    toast(`次に咲く花から、第${n === 1 ? "一" : "二"}弾の花が咲きます`);
+  });
+
   // filters
   const FL = [[0, "すべて"], [1, "★1"], [2, "★2"], [3, "★3"], [4, "★4"]];
   for (const [v, label] of FL) {
@@ -855,7 +952,7 @@ img{max-width:100%}
     $("rv-name").textContent = b.sp.nm;
     $("rv-stars").textContent = starStr(b.sp.r); $("rv-stars").className = "stars" + (b.sp.r === 4 ? " r4" : "");
     $("rv-desc").textContent = (b.sp.months ? `${b.sp.months.join("・")}月にだけ出る種類です。` : "")
-      + (b.pity ? "★3以上が8本続けて出なかったため、★3以上になりました。" : b.lucky ? "3日以上連続していたため、★3・★4が出やすい状態でした。" : "");
+      + (b.pity ? "★3以上がしばらく出なかったため、★3以上になりました。" : b.lucky ? "3日以上連続していたため、★3・★4が出やすい状態でした。" : "");
     $("rv-new").hidden = !isNew;
     fillInfo(b.sp, true);
     $("reveal").hidden = false; $("rv-close").focus();
